@@ -1,8 +1,9 @@
-// Firebase 인증 & 사용자 정보 서비스
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
+  GoogleAuthProvider,
+  signInWithCredential,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './firebase';
@@ -92,6 +93,103 @@ export async function loginWithEmail(email: string, pass: string): Promise<UserP
       message = '이메일 또는 비밀번호가 올바르지 않습니다.';
     }
     throw new Error(message);
+  }
+}
+
+// 구글 로그인 처리
+export async function signInWithGoogle(idToken: string): Promise<UserProfile> {
+  try {
+    const credential = GoogleAuthProvider.credential(idToken);
+    const userCredential = await signInWithCredential(auth, credential);
+    const user = userCredential.user;
+
+    // Firestore 프로필 확인 및 생성
+    const userRef = doc(db, 'users', user.uid);
+    const userSnap = await getDoc(userRef);
+
+    if (!userSnap.exists()) {
+      // 신규 소셜 사용자 프로필 생성
+      const profileData: UserProfile = {
+        id: user.uid,
+        email: user.email || '',
+        nickname: user.displayName || '구글 사용자',
+        userType: 'GENERAL',
+        isAdmin: user.email === 'leeyob@gmail.com',
+        createdAt: new Date().toISOString(),
+      };
+      await setDoc(userRef, { ...profileData, createdAt: serverTimestamp() });
+      return profileData;
+    }
+
+    const data = userSnap.data();
+    return {
+      id: user.uid,
+      email: data.email,
+      nickname: data.nickname,
+      userType: data.userType,
+      isAdmin: data.isAdmin,
+      createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
+    } as UserProfile;
+  } catch (error: any) {
+    console.error('구글 로그인 에러:', error);
+    throw new Error('구글 로그인에 실패했습니다.');
+  }
+}
+
+// 카카오 로그인 처리 (Firebase Auth 이메일 계정 통합 관리)
+export async function signInWithKakao(kakaoUser: any): Promise<UserProfile> {
+  try {
+    const email = kakaoUser.kakao_account?.email || `${kakaoUser.id}@kakao.user`;
+    const nickname = kakaoUser.properties?.nickname || '카카오 사용자';
+    
+    // 카카오 고유 ID를 기반으로 내부 관리용 비밀번호 생성 (보안 강화)
+    // 실제 사용자가 입력하는 비밀번호가 아니며, 소셜 연동 관리를 위한 용도입니다.
+    const internalPassword = `kakao_auth_${kakaoUser.id}_baroer`;
+
+    let user;
+    try {
+      // 1. 이미 가입된 계정인지 확인 시도
+      const userCredential = await signInWithEmailAndPassword(auth, email, internalPassword);
+      user = userCredential.user;
+    } catch (e: any) {
+      // 2. 계정이 없는 경우 (auth/user-not-found 또는 auth/invalid-credential) 신규 생성
+      if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password') {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, internalPassword);
+        user = userCredential.user;
+      } else {
+        throw e;
+      }
+    }
+
+    // 3. Firestore 프로필 확인 및 업데이트
+    const userRef = doc(db, 'users', user.uid);
+    const userSnap = await getDoc(userRef);
+
+    if (!userSnap.exists()) {
+      const profileData: UserProfile = {
+        id: user.uid,
+        email: email,
+        nickname: nickname,
+        userType: 'GENERAL',
+        isAdmin: email === 'leeyob@gmail.com',
+        createdAt: new Date().toISOString(),
+      };
+      await setDoc(userRef, { ...profileData, createdAt: serverTimestamp() });
+      return profileData;
+    }
+
+    const data = userSnap.data();
+    return {
+      id: user.uid,
+      email: data.email,
+      nickname: data.nickname,
+      userType: data.userType,
+      isAdmin: data.isAdmin,
+      createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
+    } as UserProfile;
+  } catch (error: any) {
+    console.error('카카오 Firebase 통합 로그인 에러:', error);
+    throw new Error(`카카오 계정 통합 관리에 실패했습니다. (${error.code || 'unknown'})`);
   }
 }
 

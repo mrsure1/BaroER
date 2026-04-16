@@ -5,16 +5,19 @@ export interface SymptomOption {
   key: SymptomCategory;
   label: string;
   emoji: string;
+  iconName: any; // Ionicons name
+  seriousDiseaseCodes?: string[]; // API 매핑 코드 (HV1, HV12 등)
 }
 
 // 증상 선택 목록
 export const SYMPTOM_OPTIONS: SymptomOption[] = [
-  { key: 'HEADACHE', label: '두통', emoji: '🤕' },
-  { key: 'CHEST_PAIN', label: '흉통', emoji: '💔' },
-  { key: 'TRAUMA', label: '외상', emoji: '🩹' },
-  { key: 'DYSPNEA', label: '호흡곤란', emoji: '😮‍💨' },
-  { key: 'ABDOMINAL', label: '복통', emoji: '🤢' },
-  { key: 'OTHER', label: '기타', emoji: '🔧' },
+  { key: 'ANAPHYLAXIS', label: '아나필락시스', emoji: '⚠️', iconName: 'alert-circle-outline', seriousDiseaseCodes: ['HV12'] }, // 급성 알레르기
+  { key: 'CHEST_PAIN', label: '흉통', emoji: '💔', iconName: 'heart-outline', seriousDiseaseCodes: ['HV1'] }, // 심근경색
+  { key: 'HEADACHE', label: '두통', emoji: '🤕', iconName: 'flash-outline', seriousDiseaseCodes: ['HV2', 'HV3'] }, // 뇌출혈, 뇌경색
+  { key: 'DYSPNEA', label: '호흡곤란', emoji: '😮‍💨', iconName: 'fitness-outline', seriousDiseaseCodes: ['HV1'] }, // 심장질환 등
+  { key: 'TRAUMA', label: '외상', emoji: '🩹', iconName: 'medkit-outline', seriousDiseaseCodes: ['HV11'] }, // 다발성외상
+  { key: 'ABDOMINAL', label: '복통', emoji: '🤢', iconName: 'bandage-outline', seriousDiseaseCodes: ['HV5', 'HV6'] }, // 복부아올타, 담낭 등
+  { key: 'OTHER', label: '기타', emoji: '🔧', iconName: 'help-circle-outline' },
 ];
 
 // 연령대 레이블

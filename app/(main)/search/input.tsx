@@ -12,6 +12,7 @@ import {
   Modal,
   Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 // @react-native-voice/voice는 네이티브 전용이므로 조건부로 가져옵니다.
 const Voice = Platform.OS !== 'web' ? require('@react-native-voice/voice').default : null;
 
@@ -177,12 +178,12 @@ export default function PatientInputScreen() {
           </View>
         ) : userLocation ? (
           <View style={styles.locationRow}>
-            <Text style={styles.locationIcon}>📍</Text>
+            <Ionicons name="location-sharp" size={16} color={Colors.primary} />
             <Text style={styles.locationText}>{userLocation.address || '현재 위치 확인됨'}</Text>
           </View>
         ) : (
           <TouchableOpacity style={styles.locationRow} onPress={fetchLocation}>
-            <Text style={styles.locationIcon}>📍</Text>
+            <Ionicons name="location-outline" size={16} color={Colors.primary} />
             <Text style={[styles.locationText, { color: Colors.primary }]}>위치 권한 허용하기</Text>
           </TouchableOpacity>
         )}
@@ -199,8 +200,14 @@ export default function PatientInputScreen() {
               style={[styles.chip, isSelected && styles.chipSelected]}
               onPress={() => toggleSymptom(opt.key)}
             >
+              <Ionicons 
+                name={opt.iconName} 
+                size={18} 
+                color={isSelected ? Colors.primary : Colors.divider} 
+                style={{ marginRight: 6 }} 
+              />
               <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-                {opt.emoji} {opt.label}
+                {opt.label}
               </Text>
             </TouchableOpacity>
           );
@@ -219,54 +226,60 @@ export default function PatientInputScreen() {
           multiline
         />
         <TouchableOpacity style={styles.micBtn} onPress={startVoiceInput}>
-          <Text style={styles.micEmoji}>🎤</Text>
+          <Ionicons name="mic-outline" size={24} color="#fff" />
         </TouchableOpacity>
       </View>
 
-      {/* 환자 정보 */}
+      {/* 환자 정보 (성별 + 연령대 통합) */}
       <View style={styles.divider} />
-      <Text style={styles.sectionTitle}>환자 정보</Text>
+      <View style={styles.patientInfoWrapper}>
+        {/* 성별 */}
+        <View style={styles.genderSection}>
+          <Text style={styles.fieldLabel}>성별</Text>
+          <View style={styles.genderRow}>
+            {(['MALE', 'FEMALE'] as Gender[]).map((g) => (
+              <TouchableOpacity key={g} style={styles.genderItem} onPress={() => setPatientGender(g)}>
+                <View style={[styles.radioCircle, patientGender === g && styles.radioChecked]}>
+                  {patientGender === g && <View style={styles.radioDot} />}
+                </View>
+                <Text style={styles.radioLabelSmall}>{g === 'MALE' ? '남성' : '여성'}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
 
-      {/* 성별 */}
-      <Text style={styles.fieldLabel}>성별</Text>
-      <View style={styles.radioRow}>
-        {(['MALE', 'FEMALE'] as Gender[]).map((g) => (
-          <TouchableOpacity key={g} style={styles.radioItem} onPress={() => setPatientGender(g)}>
-            <View style={[styles.radioCircle, patientGender === g && styles.radioChecked]}>
-              {patientGender === g && <View style={styles.radioDot} />}
-            </View>
-            <Text style={styles.radioLabel}>{g === 'MALE' ? '남성' : '여성'}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* 연령대 */}
-      <Text style={styles.fieldLabel}>연령대</Text>
-      <View style={styles.chipGrid}>
-        {(Object.entries(AGE_GROUP_LABELS) as [AgeGroup, string][]).map(([key, label]) => (
-          <TouchableOpacity
-            key={key}
-            style={[styles.ageChip, patientAgeGroup === key && styles.chipSelected]}
-            onPress={() => setPatientAgeGroup(key)}
-          >
-            <Text style={[styles.ageChipText, patientAgeGroup === key && styles.chipTextSelected]}>
-              {label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        {/* 연령대 */}
+        <View style={styles.ageSection}>
+          <Text style={styles.fieldLabel}>연령대</Text>
+          <View style={styles.ageChipGrid}>
+            {(Object.entries(AGE_GROUP_LABELS) as [AgeGroup, string][]).map(([key, label]) => (
+              <TouchableOpacity
+                key={key}
+                style={[styles.ageChipCompact, patientAgeGroup === key && styles.chipSelected]}
+                onPress={() => setPatientAgeGroup(key)}
+              >
+                <Text style={[styles.ageChipTextSmall, patientAgeGroup === key && styles.chipTextSelected]}>
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
       </View>
 
       {/* 의식 상태 */}
-      <Text style={styles.fieldLabel}>의식 상태</Text>
-      <View style={styles.radioRow}>
-        {(Object.entries(CONSCIOUSNESS_LABELS) as [ConsciousnessLevel, string][]).map(([key, label]) => (
-          <TouchableOpacity key={key} style={styles.radioItem} onPress={() => setConsciousnessLevel(key)}>
-            <View style={[styles.radioCircle, consciousnessLevel === key && styles.radioChecked]}>
-              {consciousnessLevel === key && <View style={styles.radioDot} />}
-            </View>
-            <Text style={styles.radioLabel}>{label}</Text>
-          </TouchableOpacity>
-        ))}
+      <View style={{ marginTop: -Spacing.md }}>
+        <Text style={styles.fieldLabel}>의식 상태</Text>
+        <View style={styles.radioRowCompact}>
+          {(Object.entries(CONSCIOUSNESS_LABELS) as [ConsciousnessLevel, string][]).map(([key, label]) => (
+            <TouchableOpacity key={key} style={styles.radioItem} onPress={() => setConsciousnessLevel(key)}>
+              <View style={[styles.radioCircle, consciousnessLevel === key && styles.radioChecked]}>
+                {consciousnessLevel === key && <View style={styles.radioDot} />}
+              </View>
+              <Text style={styles.radioLabelSmall}>{label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
       {/* 검색 버튼 */}
@@ -281,7 +294,10 @@ export default function PatientInputScreen() {
             <Text style={styles.searchBtnText}>검색 중...</Text>
           </View>
         ) : (
-          <Text style={styles.searchBtnText}>🔍 응급실 검색</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="search" size={20} color="#fff" />
+            <Text style={styles.searchBtnText}>응급실 검색</Text>
+          </View>
         )}
       </TouchableOpacity>
 
@@ -289,7 +305,13 @@ export default function PatientInputScreen() {
       <Modal visible={voiceModalVisible} transparent animationType="fade">
         <View style={styles.voiceOverlay}>
           <View style={styles.voiceModal}>
-            <Text style={styles.voiceMic}>{isListening ? '🔴' : '🎤'}</Text>
+            <View style={styles.voiceIconCircle}>
+              <Ionicons 
+                name={isListening ? "pulse-outline" : "mic-sharp"} 
+                size={48} 
+                color={isListening ? Colors.full : Colors.primary} 
+              />
+            </View>
             <Text style={styles.voiceTitle}>
               {isListening ? '듣고 있습니다...' : '음성 인식 완료'}
             </Text>
@@ -303,15 +325,18 @@ export default function PatientInputScreen() {
             <View style={styles.voiceActions}>
               {isListening ? (
                 <TouchableOpacity style={styles.voiceStopBtn} onPress={stopVoiceInput}>
-                  <Text style={styles.voiceStopBtnText}>⏹️ 중지</Text>
+                  <Ionicons name="stop" size={18} color="#fff" style={{ marginRight: 6 }} />
+                  <Text style={styles.voiceStopBtnText}>중지</Text>
                 </TouchableOpacity>
               ) : (
                 <>
                   <TouchableOpacity style={styles.voiceRetryBtn} onPress={startVoiceInput}>
-                    <Text style={styles.voiceRetryBtnText}>🔄 다시</Text>
+                    <Ionicons name="refresh" size={18} color={Colors.secondary} style={{ marginRight: 6 }} />
+                    <Text style={styles.voiceRetryBtnText}>다시</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.voiceApplyBtn} onPress={applyVoiceResult}>
-                    <Text style={styles.voiceApplyBtnText}>✅ 적용</Text>
+                    <Ionicons name="checkmark" size={18} color="#fff" style={{ marginRight: 6 }} />
+                    <Text style={styles.voiceApplyBtnText}>적용</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -342,6 +367,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: FontSize.md, fontWeight: '600', color: Colors.text, marginBottom: Spacing.md },
   chipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: Spacing.xl },
   chip: {
+    flexDirection: 'row', alignItems: 'center',
     paddingVertical: 10, paddingHorizontal: 16,
     borderRadius: BorderRadius.md, borderWidth: 1.5, borderColor: Colors.border,
     backgroundColor: Colors.background,
@@ -371,14 +397,22 @@ const styles = StyleSheet.create({
   radioChecked: { borderColor: Colors.primary },
   radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: Colors.primary },
   radioLabel: { fontSize: FontSize.md, color: Colors.text },
-  ageChip: {
-    paddingVertical: 8, paddingHorizontal: 14,
+  radioLabelSmall: { fontSize: FontSize.sm, color: Colors.text },
+  patientInfoWrapper: { flexDirection: 'row', gap: 16, marginBottom: Spacing.lg },
+  genderSection: { flex: 0.35 },
+  ageSection: { flex: 0.65 },
+  genderRow: { flexDirection: 'column', gap: 8, marginTop: 4 },
+  genderItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  ageChipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
+  ageChipCompact: {
+    paddingVertical: 6, paddingHorizontal: 10,
     borderRadius: BorderRadius.sm, borderWidth: 1.5, borderColor: Colors.border, backgroundColor: Colors.background,
   },
-  ageChipText: { fontSize: FontSize.sm, color: Colors.textSecondary },
+  ageChipTextSmall: { fontSize: 12, color: Colors.textSecondary },
+  radioRowCompact: { flexDirection: 'row', gap: 12, marginBottom: Spacing.md, flexWrap: 'wrap' },
   searchBtn: {
     backgroundColor: Colors.primary, borderRadius: BorderRadius.lg,
-    padding: 16, alignItems: 'center', marginTop: Spacing.lg,
+    padding: 16, alignItems: 'center', marginTop: Spacing.sm,
   },
   searchBtnText: { color: '#fff', fontSize: FontSize.lg, fontWeight: '700' },
   // 음성 모달
@@ -387,24 +421,29 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   voiceModal: {
-    backgroundColor: '#fff', borderRadius: 20, padding: 30,
-    width: '85%', alignItems: 'center',
+    backgroundColor: '#fff', borderRadius: 24, padding: 30,
+    width: '85%', alignItems: 'center', elevation: 20, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 15,
+  },
+  voiceIconCircle: {
+    width: 100, height: 100, borderRadius: 50,
+    backgroundColor: '#F8F9FA', alignItems: 'center', justifyContent: 'center',
+    marginBottom: 20, borderWidth: 1, borderColor: '#eee',
   },
   voiceMic: { fontSize: 48, marginBottom: 12 },
-  voiceTitle: { fontSize: FontSize.lg, fontWeight: '600', color: Colors.text, marginBottom: 8 },
+  voiceTitle: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.text, marginBottom: 8 },
   voiceHint: { fontSize: FontSize.sm, color: Colors.textSecondary },
   voiceTranscript: {
-    backgroundColor: Colors.inputBg, borderRadius: BorderRadius.md,
-    padding: 14, marginVertical: 14, width: '100%',
+    backgroundColor: '#F1F3F5', borderRadius: BorderRadius.md,
+    padding: 16, marginVertical: 14, width: '100%',
   },
-  voiceTranscriptText: { fontSize: FontSize.md, color: Colors.text, lineHeight: 22 },
+  voiceTranscriptText: { fontSize: FontSize.md, color: Colors.text, lineHeight: 22, textAlign: 'center' },
   voiceActions: { flexDirection: 'row', gap: 10, marginTop: 12, flexWrap: 'wrap', justifyContent: 'center' },
-  voiceStopBtn: { backgroundColor: Colors.full, borderRadius: BorderRadius.md, paddingHorizontal: 20, paddingVertical: 10 },
-  voiceStopBtnText: { color: '#fff', fontWeight: '600' },
-  voiceRetryBtn: { backgroundColor: Colors.badgeBlue, borderRadius: BorderRadius.md, paddingHorizontal: 16, paddingVertical: 10 },
-  voiceRetryBtnText: { color: Colors.secondary, fontWeight: '600' },
-  voiceApplyBtn: { backgroundColor: Colors.available, borderRadius: BorderRadius.md, paddingHorizontal: 20, paddingVertical: 10 },
-  voiceApplyBtnText: { color: '#fff', fontWeight: '600' },
-  voiceCancelBtn: { borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.md, paddingHorizontal: 16, paddingVertical: 10 },
-  voiceCancelBtnText: { color: Colors.textSecondary },
+  voiceStopBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.full, borderRadius: BorderRadius.md, paddingHorizontal: 20, paddingVertical: 12 },
+  voiceStopBtnText: { color: '#fff', fontWeight: '700' },
+  voiceRetryBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.badgeBlue, borderRadius: BorderRadius.md, paddingHorizontal: 16, paddingVertical: 12 },
+  voiceRetryBtnText: { color: Colors.secondary, fontWeight: '700' },
+  voiceApplyBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.available, borderRadius: BorderRadius.md, paddingHorizontal: 20, paddingVertical: 12 },
+  voiceApplyBtnText: { color: '#fff', fontWeight: '700' },
+  voiceCancelBtn: { width: '100%', alignItems: 'center', marginTop: 16 },
+  voiceCancelBtnText: { color: Colors.textSecondary, fontWeight: '500' },
 });

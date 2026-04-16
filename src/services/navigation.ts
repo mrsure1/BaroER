@@ -21,17 +21,24 @@ export async function openNavigation(
   destName: string,
   destLat: number,
   destLng: number,
+  destAddress?: string,
 ): Promise<void> {
   let url: string;
 
   switch (naviId) {
     case 'kakao':
-      // 카카오맵 길안내
-      url = Platform.select({
-        ios: `kakaomap://route?ep=${destLat},${destLng}&by=CAR`,
-        android: `kakaomap://route?ep=${destLat},${destLng}&by=CAR`,
-        default: `https://map.kakao.com/link/to/${encodeURIComponent(destName)},${destLat},${destLng}`,
-      }) || '';
+      // 좌표가 없으면 주소 검색으로 실행
+      if (!destLat || !destLng) {
+        const query = destAddress || destName;
+        url = `kakaomap://search?q=${encodeURIComponent(query)}`;
+      } else {
+        // 카카오맵 길안내
+        url = Platform.select({
+          ios: `kakaomap://route?ep=${destLat},${destLng}&by=CAR`,
+          android: `kakaomap://route?ep=${destLat},${destLng}&by=CAR`,
+          default: `https://map.kakao.com/link/to/${encodeURIComponent(destName)},${destLat},${destLng}`,
+        }) || '';
+      }
       break;
 
     case 'tmap':
@@ -40,12 +47,17 @@ export async function openNavigation(
       break;
 
     case 'naver':
-      // 네이버지도 길안내
-      url = Platform.select({
-        ios: `nmap://route/car?dlat=${destLat}&dlng=${destLng}&dname=${encodeURIComponent(destName)}&appname=com.baroer`,
-        android: `nmap://route/car?dlat=${destLat}&dlng=${destLng}&dname=${encodeURIComponent(destName)}&appname=com.baroer`,
-        default: `https://map.naver.com/v5/directions/-/-/-/car?c=${destLng},${destLat},15,0,0,0,dh`,
-      }) || '';
+      // 좌표 부재 시 네이버 검색 앱호출 (선택사항, 카카오와 유사하게 처리)
+      if (!destLat || !destLng) {
+        url = `nmap://search?query=${encodeURIComponent(destAddress || destName)}&appname=com.baroer`;
+      } else {
+        // 네이버지도 길안내
+        url = Platform.select({
+          ios: `nmap://route/car?dlat=${destLat}&dlng=${destLng}&dname=${encodeURIComponent(destName)}&appname=com.baroer`,
+          android: `nmap://route/car?dlat=${destLat}&dlng=${destLng}&dname=${encodeURIComponent(destName)}&appname=com.baroer`,
+          default: `https://map.naver.com/v5/directions/-/-/-/car?c=${destLng},${destLat},15,0,0,0,dh`,
+        }) || '';
+      }
       break;
 
     default:

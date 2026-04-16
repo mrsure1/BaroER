@@ -30,6 +30,7 @@ export type SymptomCategory =
   | 'TRAUMA'
   | 'DYSPNEA'
   | 'ABDOMINAL'
+  | 'ANAPHYLAXIS'
   | 'OTHER';
 
 // 환자 상태 입력 데이터
@@ -65,6 +66,8 @@ export interface Hospital {
   distanceKm?: number;
   etaMin?: number;
   lastUpdated: string;
+  seriousStatus?: Record<string, 'Y' | 'N'>; // 중증질환별 수용 가능 여부 (HV1, HV12 등)
+  realtimeMsg?: string;                     // 병원별 실시간 특이사항 메시지
 }
 
 // 출동 기록 상태

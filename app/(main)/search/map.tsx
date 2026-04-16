@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Linking, Platform, Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { WebView } from 'react-native-webview';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/Colors';
@@ -179,20 +180,20 @@ export default function MapScreen() {
       <View style={styles.headerLayer}>
         <View style={styles.modeToggle}>
           <TouchableOpacity style={[styles.modeTab, styles.modeTabActive]}>
-            <Text style={[styles.modeTabText, styles.modeTabTextActive]}>🗺️ 지도</Text>
+            <Ionicons name="map" size={18} color={Colors.white} style={{ marginRight: 4 }} />
+            <Text style={[styles.modeTabText, styles.modeTabTextActive]}>지도</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.modeTab} onPress={() => router.replace('/(main)/search/list')}>
-            <Text style={styles.modeTabText}>📋 리스트</Text>
+            <Ionicons name="list" size={18} color={Colors.divider} style={{ marginRight: 4 }} />
+            <Text style={styles.modeTabText}>리스트</Text>
           </TouchableOpacity>
         </View>
 
-        <View 
-          style={styles.radiusSliderBox}
-          onLayout={(e) => {
-            // 트랙의 실제 너비를 저장하여 정밀한 계산 가능 (생략 가능하나 정확도를 위해 유지)
-          }}
-        >
-          <Text style={styles.sliderLabel}>🔍 검색 반경: <Text style={styles.sliderValue}>{searchRadius}km</Text></Text>
+        <View style={styles.radiusSliderBox}>
+          <View style={styles.sliderLabelRow}>
+            <Ionicons name="search" size={16} color={Colors.primary} />
+            <Text style={styles.sliderLabel}> 검색 반경: <Text style={styles.sliderValue}>{searchRadius}km</Text></Text>
+          </View>
           <View style={styles.sliderContainer}>
             <Text style={styles.sliderLimit}>5km</Text>
             <View 
@@ -246,7 +247,8 @@ export default function MapScreen() {
             <View>
               <Text style={styles.hospitalName}>{selectedHospital.name}</Text>
               <Text style={styles.hospitalDist}>
-                📏 {selectedHospital.distanceKm}km | ⏱️ 약 {selectedHospital.etaMin}분
+                <Ionicons name="swap-horizontal" size={14} color={Colors.textSecondary} /> {selectedHospital.distanceKm}km | 
+                <Ionicons name="time-outline" size={14} color={Colors.textSecondary} /> 약 {selectedHospital.etaMin}분
               </Text>
             </View>
             <View style={[styles.statusTag, { backgroundColor: getStatusColor(selectedHospital.status) + '20' }]}>
@@ -261,13 +263,15 @@ export default function MapScreen() {
               style={[styles.actionBtn, { backgroundColor: Colors.secondary }]}
               onPress={() => handleCall(selectedHospital.phone)}
             >
-              <Text style={styles.actionBtnText}>📞 전화 문의</Text>
+              <Ionicons name="call" size={18} color={Colors.white} style={{ marginRight: 6 }} />
+              <Text style={styles.actionBtnText}>전화 문의</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={[styles.actionBtn, { backgroundColor: Colors.available }]}
               onPress={() => openNavigation('kakao', selectedHospital.name, selectedHospital.lat, selectedHospital.lng)}
             >
-              <Text style={styles.actionBtnText}>🧭 길 안내 시작</Text>
+              <Ionicons name="navigate" size={18} color={Colors.white} style={{ marginRight: 6 }} />
+              <Text style={styles.actionBtnText}>길 안내 시작</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -292,16 +296,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.9)', 
     borderRadius: 14, padding: 4, elevation: 5, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10,
   },
-  modeTab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 10 },
+  modeTab: { 
+    flex: 1, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', 
+    borderRadius: 10, flexDirection: 'row' 
+  },
   modeTabActive: { backgroundColor: Colors.primary },
   modeTabText: { fontSize: FontSize.sm, fontWeight: '700', color: '#868E96' },
   modeTabTextActive: { color: '#fff' },
   
   radiusSliderBox: {
-    backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 18, 
+    backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 20, 
     padding: 16, elevation: 8, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 15,
   },
-  sliderLabel: { fontSize: 13, fontWeight: '700', color: '#444', marginBottom: 12 },
+  sliderLabelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  sliderLabel: { fontSize: 13, fontWeight: '700', color: '#444' },
   sliderValue: { color: Colors.primary, fontSize: 16 },
   sliderContainer: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   sliderLimit: { fontSize: 11, color: '#999', fontWeight: '600' },

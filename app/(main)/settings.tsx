@@ -4,6 +4,7 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch } from 're
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/Colors';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -20,23 +21,41 @@ export default function SettingsScreen() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>⚙️ 설정</Text>
+        <View style={styles.headerTitleRow}>
+          <Ionicons name="settings-sharp" size={24} color={Colors.primary} style={{ marginRight: 8 }} />
+          <Text style={styles.headerTitle}>설정</Text>
+        </View>
       </View>
 
       {/* 프로필 */}
       <Text style={styles.sectionTitle}>프로필</Text>
       <View style={styles.item}>
-        <View>
-          <Text style={styles.itemLabel}>👤 {user?.nickname || '사용자'}</Text>
-          <Text style={styles.itemSub}>{user?.email}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={styles.profileIconCircle}>
+            <Ionicons name="person" size={20} color={Colors.primary} />
+          </View>
+          <View>
+            <Text style={styles.itemLabel}>{user?.nickname || '사용자'}</Text>
+            <Text style={styles.itemSub}>{user?.email}</Text>
+          </View>
         </View>
-        <Text style={styles.itemLink}>수정 ›</Text>
+        <TouchableOpacity onPress={() => {}}>
+          <Text style={styles.itemLink}>수정</Text>
+        </TouchableOpacity>
       </View>
       <View style={styles.item}>
         <Text style={styles.itemLabel}>사용자 유형</Text>
-        <Text style={styles.itemValue}>
-          {user?.userType === 'PARAMEDIC' ? '🚑 구급대원' : '👤 일반 사용자'}
-        </Text>
+        <View style={styles.valueRow}>
+          <Ionicons 
+            name={user?.userType === 'PARAMEDIC' ? 'medkit-sharp' : 'person-circle-outline'} 
+            size={18} 
+            color={user?.userType === 'PARAMEDIC' ? Colors.secondary : Colors.textSecondary} 
+            style={{ marginRight: 6 }}
+          />
+          <Text style={styles.itemValue}>
+            {user?.userType === 'PARAMEDIC' ? '구급대원' : '일반 사용자'}
+          </Text>
+        </View>
       </View>
 
       {/* 검색 설정 */}
@@ -94,26 +113,36 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.backgroundGray },
-  header: { paddingTop: 50, paddingHorizontal: Spacing.xl, paddingBottom: Spacing.lg, backgroundColor: Colors.primary },
-  headerTitle: { fontSize: FontSize.xl, fontWeight: '700', color: '#fff' },
+  header: {
+    paddingTop: 60, paddingHorizontal: Spacing.xl, paddingBottom: Spacing.lg,
+    backgroundColor: Colors.background, borderBottomWidth: 1, borderBottomColor: '#F1F3F5',
+  },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center' },
+  headerTitle: { fontSize: 20, fontWeight: '800', color: Colors.text },
   sectionTitle: {
-    paddingHorizontal: Spacing.xl, paddingTop: Spacing.xl, paddingBottom: Spacing.sm,
-    fontSize: 12, fontWeight: '700', color: Colors.textSecondary,
-    textTransform: 'uppercase', letterSpacing: 1,
+    paddingHorizontal: Spacing.xl, paddingTop: Spacing.xl, paddingBottom: 10,
+    fontSize: 12, fontWeight: '800', color: Colors.textSecondary,
+    textTransform: 'uppercase', letterSpacing: 1.2,
   },
   item: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: 14, paddingHorizontal: Spacing.xl,
-    backgroundColor: Colors.background, borderBottomWidth: 1, borderBottomColor: Colors.divider,
+    paddingVertical: 16, paddingHorizontal: Spacing.xl,
+    backgroundColor: Colors.background, borderBottomWidth: 1, borderBottomColor: '#F8F9FA',
   },
-  itemLabel: { fontSize: FontSize.md, color: Colors.text },
-  itemSub: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 2 },
-  itemValue: { fontSize: FontSize.md, color: Colors.secondary, fontWeight: '600' },
-  itemLink: { fontSize: FontSize.md, color: Colors.primary },
-  logoutArea: { padding: Spacing.xl },
+  profileIconCircle: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: '#F1F3F5', alignItems: 'center', justifyContent: 'center',
+    marginRight: 12,
+  },
+  itemLabel: { fontSize: 16, fontWeight: '600', color: Colors.text },
+  itemSub: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
+  valueRow: { flexDirection: 'row', alignItems: 'center' },
+  itemValue: { fontSize: 15, color: Colors.secondary, fontWeight: '600' },
+  itemLink: { fontSize: 14, color: Colors.primary, fontWeight: '700' },
+  logoutArea: { padding: Spacing.xl, marginTop: Spacing.lg },
   logoutBtn: {
-    borderWidth: 1.5, borderColor: Colors.primary, borderRadius: BorderRadius.md,
-    padding: 13, alignItems: 'center',
+    backgroundColor: '#FFF1F0', borderRadius: BorderRadius.md,
+    padding: 16, alignItems: 'center', borderWidth: 1, borderColor: '#FFE4E1',
   },
-  logoutBtnText: { color: Colors.primary, fontSize: FontSize.md, fontWeight: '600' },
+  logoutBtnText: { color: Colors.full, fontSize: 16, fontWeight: '700' },
 });

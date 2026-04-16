@@ -7,7 +7,7 @@ const getServiceKey = (): string =>
   process.env.EXPO_PUBLIC_DATA_SERVICE_KEY || '';
 
 const getBaseUrl = (): string =>
-  process.env.EXPO_PUBLIC_DATA_ER_BASE_URL || 'http://apis.data.go.kr/B552657/ErmctInfoInqireService';
+  process.env.EXPO_PUBLIC_DATA_ER_BASE_URL || 'https://apis.data.go.kr/B552657/ErmctInfoInqireService';
 
 const getOperation = (): string =>
   process.env.EXPO_PUBLIC_DATA_ER_OPERATION || 'getEmrrmRltmUsefulSckbdInfoInqire';
@@ -43,6 +43,30 @@ interface EmergencyBedItem {
   hv1?: number;       // 응급실 전체 병상 수
   hvidate?: string;   // 입력 일시
   dutyEryn?: number;  // 응급실 운영 여부 (1=운영)
+}
+
+// 중증응급질환 수용 가능 정보 조회 응답
+interface SeriousDiseaseResponse {
+  response: {
+    header: { resultCode: string; resultMsg: string };
+    body: {
+      items: { item: SeriousDiseaseItem[] | SeriousDiseaseItem };
+      totalCount: number;
+    };
+  };
+}
+
+// 중증응급질환 항목 (HV1~HV12 등)
+export interface SeriousDiseaseItem {
+  hpid: string;
+  dutyName: string;
+  hv1?: 'Y' | 'N'; // 심근경색
+  hv2?: 'Y' | 'N'; // 뇌출혈
+  hv3?: 'Y' | 'N'; // 뇌경색
+  hv10?: 'Y' | 'N'; // 중증화상
+  hv11?: 'Y' | 'N'; // 다발성외상
+  hv12?: 'Y' | 'N'; // 아나필락시스
+  msg?: string;    // 실시간 특이사항 메시지
 }
 
 // 응급의료기관 기본 정보 조회
@@ -84,11 +108,11 @@ function mapToHospital(item: EmergencyBedItem, userLat?: number, userLng?: numbe
     availableBeds: availableBeds,
     hasDoctorOnDuty: (item.dutyEryn ?? 0) === 1,
     status,
-    lastUpdated: item.hvidate || new Date().toISOString(),
+    lastUpdated: String(item.hvidate || new Date().toISOString().replace('T', ' ').split('.')[0]),
   };
 
-  // 사용자 위치가 있다면 거리/ETA 계산
-  if (userLat !== undefined && userLng !== undefined) {
+  // 사용자 위치와 병원 좌표가 모두 있다면 거리/ETA 계산
+  if (userLat !== undefined && userLng !== undefined && item.wgs84Lat && item.wgs84Lon) {
     hospital.distanceKm = calculateDistance(userLat, userLng, item.wgs84Lat, item.wgs84Lon);
     hospital.etaMin = estimateETA(hospital.distanceKm);
   }
@@ -138,21 +162,35 @@ export async function fetchEmergencyBeds(
     const params = new URLSearchParams({
       serviceKey,
       pageNo: '1',
-      numOfRows: '50',
+      numOfRows: '100',
+      _type: 'json', // JSON 형식 강제
       ...(stage1 && { STAGE1: stage1 }),
       ...(stage2 && { STAGE2: stage2 }),
     });
 
-    const response = await fetch(
-      `${getBaseUrl()}/${getOperation()}?${params}`,
-      { headers: { Accept: 'application/json' } }
-    );
+    const url = `${getBaseUrl()}/${getOperation()}?${params}`;
+    console.log('[API Request] URL:', url);
+
+    const response = await fetch(url, { 
+      headers: { Accept: 'application/json' } 
+    });
 
     if (!response.ok) {
+      console.error(`[API Error] Status: ${response.status}, URL: ${url}`);
       throw new Error(`API 응답 오류: ${response.status}`);
     }
 
-    const data: EmergencyBedResponse = await response.json();
+    const rawData = await response.text();
+    console.log('[API Response] Length:', rawData.length);
+    
+    // JSON 파싱 시도 전 형식 확인
+    if (!rawData.trim().startsWith('{')) {
+      console.warn('[API Warning] Response is NOT JSON. Check Service Key or API setting.');
+      return [];
+    }
+
+    const data: EmergencyBedResponse = JSON.parse(rawData);
+    console.log('[API Result] Items Count:', data.response?.body?.totalCount || 0);
 
     // 결과 없음
     if (!data.response?.body?.items?.item) return [];
@@ -162,12 +200,51 @@ export async function fetchEmergencyBeds(
       ? data.response.body.items.item
       : [data.response.body.items.item];
 
-    // Hospital 변환 + 거리 기준 정렬
-    const hospitals = items
-      .filter((item) => item.wgs84Lat && item.wgs84Lon)
-      .map((item) => mapToHospital(item, lat, lng))
-      .sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999));
+    // Hospital 변환
+    let hospitals = items.map((item) => mapToHospital(item, lat, lng));
 
+    // 좌표가 없는 병원 보강 (상세 정보를 조회하여 좌표 확보)
+    const hospitalsToEnrich = hospitals.filter(h => !h.lat || !h.lng);
+    
+    if (hospitalsToEnrich.length > 0) {
+      console.log(`[Data Enrichment] Enriching ${hospitalsToEnrich.length} hospitals with missing coordinates...`);
+      
+      const enrichedData = await Promise.all(
+        hospitalsToEnrich.map(async (h) => {
+          try {
+            const detail = await fetchHospitalDetail(h.id);
+            if (detail && detail.wgs84Lat && detail.wgs84Lon) {
+              return { id: h.id, lat: detail.wgs84Lat, lng: detail.wgs84Lon };
+            }
+          } catch (e) {
+            console.warn(`[Data Enrichment] Failed for ${h.name}:`, e);
+          }
+          return null;
+        })
+      );
+
+      // 데이터 병합 및 거리 재계산
+      hospitals = hospitals.map(h => {
+        const enriched = enrichedData.find(e => e && e.id === h.id);
+        if (enriched) {
+          h.lat = enriched.lat;
+          h.lng = enriched.lng;
+          // 거리와 ETA 재계산
+          h.distanceKm = calculateDistance(lat, lng, h.lat, h.lng);
+          h.etaMin = estimateETA(h.distanceKm);
+        }
+        return h;
+      });
+    }
+
+    // 거리 기준 정렬
+    hospitals.sort((a, b) => {
+      if (a.distanceKm === undefined) return 1;
+      if (b.distanceKm === undefined) return -1;
+      return a.distanceKm - b.distanceKm;
+    });
+
+    console.log(`[Service Result] Final Hospitals Mapped & Enriched: ${hospitals.length}`);
     return hospitals;
   } catch (error) {
     console.error('응급실 정보 조회 실패:', error);
@@ -198,6 +275,48 @@ export async function fetchHospitalDetail(hpid: string): Promise<HospitalInfoIte
   } catch (error) {
     console.error('병원 상세 정보 조회 실패:', error);
     return null;
+  }
+}
+
+// 중증응급질환 수용가능 정보 조회 (지역 기반)
+export async function fetchSeriousDiseaseStatus(
+  stage1?: string,
+  stage2?: string
+): Promise<SeriousDiseaseItem[]> {
+  const serviceKey = getServiceKey();
+  if (!serviceKey) return [];
+
+  try {
+    const params = new URLSearchParams({
+      serviceKey,
+      pageNo: '1',
+      numOfRows: '100',
+      _type: 'json',
+      ...(stage1 && { STAGE1: stage1 }),
+      ...(stage2 && { STAGE2: stage2 }),
+    });
+
+    // 중증질환 수용가능 정보 오퍼레이션 사용
+    const url = `${getBaseUrl()}/getSrsillDissAceptncPosblInfoInqire?${params}`;
+    console.log('[Serious API Request] URL:', url);
+
+    const response = await fetch(url, { headers: { Accept: 'application/json' } });
+    if (!response.ok) throw new Error(`API 응답 오류: ${response.status}`);
+
+    const rawData = await response.text();
+    if (!rawData.trim().startsWith('{')) return [];
+
+    const data: SeriousDiseaseResponse = JSON.parse(rawData);
+    if (!data.response?.body?.items?.item) return [];
+
+    const items = Array.isArray(data.response.body.items.item)
+      ? data.response.body.items.item
+      : [data.response.body.items.item];
+
+    return items;
+  } catch (error) {
+    console.error('중증응급질환 정보 조회 실패:', error);
+    return [];
   }
 }
 

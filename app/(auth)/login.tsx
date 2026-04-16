@@ -14,7 +14,12 @@ import {
 import { useRouter } from 'expo-router';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/Colors';
 import { useAuthStore } from '@/src/stores/authStore';
-import { loginWithEmail } from '@/src/services/auth';
+import { loginWithEmail, signInWithGoogle, signInWithKakao } from '@/src/services/auth';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+import * as AuthSession from 'expo-auth-session';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -43,27 +48,109 @@ export default function LoginScreen() {
     }
   };
 
-  // 소셜 로그인 (목업 버전)
+  const redirectUri = AuthSession.makeRedirectUri();
+
+  // 디버깅을 위한 로그 추가 (콘솔 설정 시 필요)
+  React.useEffect(() => {
+    console.log('--- Social Auth Debug Info ---');
+    console.log('Redirect URI:', redirectUri);
+    console.log('------------------------------');
+  }, []);
+
+  // 구글 로그인 설정
+  const [googleRequest, googleResponse, promptAsyncGoogle] = Google.useIdTokenAuthRequest({
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    redirectUri, // Redirect URI 명시
+  });
+
+  // 카카오 로그인 설정 (useAuthRequest 방식으로 변경)
+  const [kakaoRequest, kakaoResponse, promptAsyncKakao] = AuthSession.useAuthRequest(
+    {
+      clientId: process.env.EXPO_PUBLIC_KAKAO_REST_API_KEY!,
+      redirectUri,
+    },
+    { authorizationEndpoint: 'https://kauth.kakao.com/oauth/authorize' }
+  );
+
+  // 구글 응답 처리
+  React.useEffect(() => {
+    if (googleResponse?.type === 'success') {
+      const { id_token } = googleResponse.params;
+      handleGoogleSignIn(id_token);
+    } else if (googleResponse?.type === 'error') {
+      console.error('구글 로그인 상세 에러:', googleResponse.error);
+    }
+  }, [googleResponse]);
+
+  // 카카오 응답 처리
+  React.useEffect(() => {
+    if (kakaoResponse?.type === 'success') {
+      const { code } = kakaoResponse.params;
+      handleKakaoExchange(code);
+    } else if (kakaoResponse?.type === 'error') {
+      console.error('카카오 로그인 상세 에러:', kakaoResponse.error);
+    }
+  }, [kakaoResponse]);
+
+  const handleGoogleSignIn = async (idToken: string) => {
+    setIsLoading(true);
+    try {
+      const userProfile = await signInWithGoogle(idToken);
+      setUser(userProfile);
+    } catch (error: any) {
+      Alert.alert('구글 로그인 실패', error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 카카오 토큰 교환 및 프로필 처리
+  const handleKakaoExchange = async (code: string) => {
+    setIsLoading(true);
+    try {
+      // 1. 토큰 교환
+      const tokenResponse = await fetch('https://kauth.kakao.com/oauth/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `grant_type=authorization_code&client_id=${process.env.EXPO_PUBLIC_KAKAO_REST_API_KEY}&redirect_uri=${redirectUri}&code=${code}`,
+      });
+      const tokenData = await tokenResponse.json();
+
+      if (tokenData.error) throw new Error(tokenData.error_description);
+
+      // 2. 사용자 정보 가져오기
+      const userResponse = await fetch('https://kapi.kakao.com/v2/user/me', {
+        headers: { Authorization: `Bearer ${tokenData.access_token}` },
+      });
+      const userData = await userResponse.json();
+
+      // 3. 서비스 로그인 처리 (Firebase Auth 통합)
+      const userProfile = await signInWithKakao(userData);
+      setUser(userProfile);
+    } catch (error: any) {
+      Alert.alert('카카오 로그인 실패', error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 소셜 로그인 진입점
   const handleSocialLogin = (provider: string) => {
-    Alert.alert(
-      `${provider} 로그인`,
-      `현재 ${provider} 로그인은 UI 확인용 데모 모드입니다. 테스트 계정으로 로그인하시겠습니까?`,
-      [
-        { text: '취소', style: 'cancel' },
-        { 
-          text: '테스트 계정 로그인', 
-          onPress: () => {
-            setUser({
-              id: `test-${provider}`,
-              email: `test@${provider.toLowerCase()}.com`,
-              nickname: `테스트_${provider}`,
-              userType: 'GENERAL',
-              createdAt: new Date().toISOString(),
-            });
-          } 
-        }
-      ]
-    );
+    if (provider === '구글') {
+      if (googleRequest) {
+        promptAsyncGoogle();
+      } else {
+        Alert.alert('오류', '구글 로그인을 초기화할 수 없습니다. 설정을 확인해 주세요.');
+      }
+    } else if (provider === '카카오') {
+      if (kakaoRequest) {
+        promptAsyncKakao();
+      } else {
+        Alert.alert('오류', '카카오 로그인을 초기화할 수 없습니다.');
+      }
+    }
   };
 
   return (

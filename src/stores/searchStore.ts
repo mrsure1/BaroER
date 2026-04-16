@@ -1,7 +1,7 @@
 // 검색 상태 관리 스토어 (Zustand) — Phase 3: API 연동 추가
 import { create } from 'zustand';
 import { SymptomCategory, Gender, AgeGroup, ConsciousnessLevel, Hospital } from '@/src/types';
-import { fetchEmergencyBeds } from '@/src/services/emergency';
+import { fetchEmergencyBeds, STAGE1_CODES, fetchSeriousDiseaseStatus } from '@/src/services/emergency';
 import { getCurrentLocation, DEFAULT_LOCATION, UserLocation } from '@/src/services/location';
 import { calculateKTAS } from '@/src/services/triage';
 
@@ -102,14 +102,58 @@ export const useSearchStore = create<SearchState>((set, get) => ({
     set({ isSearching: true, searchError: null });
 
     try {
-      const results = await fetchEmergencyBeds(loc.latitude, loc.longitude);
+      // 주소에서 시/도(STAGE1), 시/군/구(STAGE2) 추출 시도
+      let stage1, stage2;
+      if (loc.address) {
+        const parts = loc.address.split(' ');
+        if (parts.length >= 1) {
+          const rawStage1 = parts[0];
+          // "서울" -> "서울특별시" 등으로 변환 시도
+          stage1 = STAGE1_CODES[rawStage1] || rawStage1;
+        }
+        // 반경이 15km를 초과하면 stage2(구 단위) 필터를 제거하여 검색 범위를 넓힘
+        const radius = get().searchRadius;
+        if (parts.length >= 2 && radius <= 15) {
+          stage2 = parts[1];
+        }
+        
+        console.log(`[Search Metadata] Radius: ${radius}km, Region Filter: ${stage1} ${stage2 || '(All districts)'}`);
+      }
+
+      // 병상 정보와 중증 질환 정보 병렬 호출
+      const [bedsResults, seriousResults] = await Promise.all([
+        fetchEmergencyBeds(loc.latitude, loc.longitude, stage1, stage2),
+        fetchSeriousDiseaseStatus(stage1, stage2)
+      ]);
+
+      // 데이터 병합 (hpid 기준)
+      const mergedResults = bedsResults.map(hospital => {
+        const seriousInfo = seriousResults.find(s => s.hpid === hospital.id);
+        if (seriousInfo) {
+          // 중증 질환 필드(HV1~HV12)만 추출하여 맵 생성
+          const seriousStatus: Record<string, 'Y' | 'N'> = {};
+          Object.entries(seriousInfo).forEach(([key, value]) => {
+            if (key.startsWith('hv') && (value === 'Y' || value === 'N')) {
+              seriousStatus[key] = value as 'Y' | 'N';
+            }
+          });
+
+          return {
+            ...hospital,
+            seriousStatus,
+            realtimeMsg: seriousInfo.msg || undefined,
+          };
+        }
+        return hospital;
+      });
 
       // 검색 반경 필터링
       const radius = get().searchRadius;
-      const filtered = results.filter(
-        (h) => (h.distanceKm ?? 999) <= radius
+      const filtered = mergedResults.filter(
+        (h) => h.distanceKm === undefined || h.distanceKm <= radius
       );
 
+      console.log(`[Search Result] Found ${results.length} hospitals, Filtered (radius ${radius}km): ${filtered.length}`);
       set({ hospitals: filtered, isSearching: false });
     } catch (error) {
       console.error('검색 실패:', error);
