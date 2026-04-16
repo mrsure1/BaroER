@@ -1,0 +1,1513 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>바로응급실 - 화면 설계 목업</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+  <style>
+    /* ===== 글로벌 리셋 및 기본 ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background: #0f0f1a;
+      color: #e0e0e0;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ===== 상단 헤더 ===== */
+    .page-header {
+      text-align: center;
+      padding: 60px 20px 30px;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .page-header h1 {
+      font-size: 2.4rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, #E53935, #FF6F61, #FF9800);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+    .page-header p {
+      color: #8892b0;
+      font-size: 1rem;
+      font-weight: 300;
+    }
+
+    /* ===== 화면 흐름도 ===== */
+    .flow-section {
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+    .flow-section h2 {
+      font-size: 1.3rem;
+      color: #ccd6f6;
+      margin-bottom: 20px;
+      padding-left: 12px;
+      border-left: 3px solid #E53935;
+    }
+    .flow-diagram {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 16px;
+      padding: 30px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: center;
+    }
+    .flow-node {
+      background: rgba(229, 57, 53, 0.1);
+      border: 1px solid rgba(229, 57, 53, 0.3);
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-size: 0.82rem;
+      color: #FF6F61;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-align: center;
+      min-width: 100px;
+    }
+    .flow-node:hover {
+      background: rgba(229, 57, 53, 0.25);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(229,57,53,0.2);
+    }
+    .flow-node.active {
+      background: rgba(229, 57, 53, 0.3);
+      border-color: #E53935;
+      box-shadow: 0 0 20px rgba(229,57,53,0.3);
+    }
+    .flow-arrow {
+      color: #4a5568;
+      font-size: 1.2rem;
+    }
+
+    /* ===== 네비게이션 탭 ===== */
+    .screen-nav {
+      max-width: 1200px;
+      margin: 30px auto 0;
+      padding: 0 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .screen-nav button {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #8892b0;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .screen-nav button:hover {
+      background: rgba(229, 57, 53, 0.1);
+      color: #FF6F61;
+    }
+    .screen-nav button.active {
+      background: linear-gradient(135deg, #E53935, #FF6F61);
+      color: #fff;
+      border-color: transparent;
+      font-weight: 600;
+    }
+
+    /* ===== 스크린 캔버스 ===== */
+    .screen-canvas {
+      max-width: 1200px;
+      margin: 30px auto;
+      padding: 0 20px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 40px;
+      flex-wrap: wrap;
+    }
+
+    /* ===== 모바일 프레임 ===== */
+    .phone-frame {
+      width: 375px;
+      min-height: 700px;
+      background: #ffffff;
+      border-radius: 40px;
+      box-shadow: 0 25px 80px rgba(0,0,0,0.5), 0 0 0 2px #333, 0 0 0 6px #1a1a1a, 0 0 0 8px #333;
+      overflow: hidden;
+      position: relative;
+      flex-shrink: 0;
+      transition: transform 0.4s;
+    }
+    .phone-frame:hover {
+      transform: translateY(-4px);
+    }
+
+    /* 노치 */
+    .phone-notch {
+      width: 150px;
+      height: 28px;
+      background: #1a1a1a;
+      border-radius: 0 0 18px 18px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 10;
+    }
+    .phone-notch::after {
+      content: '';
+      width: 60px;
+      height: 4px;
+      background: #333;
+      border-radius: 2px;
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    /* 상태바 */
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 24px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: #333;
+      background: #fff;
+    }
+    .status-bar-dark { background: #1a1a2e; color: #fff; }
+
+    /* 앱 헤더 */
+    .app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      background: #E53935;
+      color: #fff;
+    }
+    .app-header-title { font-size: 1rem; font-weight: 700; }
+    .app-header-back { font-size: 1.2rem; cursor: pointer; }
+    .app-header-icon { font-size: 1.1rem; cursor: pointer; }
+
+    /* 스크린 본문 영역 */
+    .screen-body {
+      padding: 0;
+      background: #f5f5f5;
+      min-height: 560px;
+    }
+    .screen-body-white { background: #ffffff; }
+
+    /* ===== 공통 컴포넌트 ===== */
+    .input-field {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-family: 'Noto Sans KR', sans-serif;
+      color: #333;
+      background: #fafafa;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+    .input-field:focus { border-color: #E53935; }
+    .input-field::placeholder { color: #bbb; }
+
+    .input-group {
+      margin-bottom: 14px;
+      position: relative;
+    }
+    .input-group label {
+      display: block;
+      font-size: 0.78rem;
+      color: #888;
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
+    .input-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 1rem;
+    }
+    .input-with-icon { padding-left: 40px; }
+
+    .btn-primary {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(135deg, #E53935, #FF6F61);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      font-size: 1rem;
+      font-weight: 700;
+      font-family: 'Noto Sans KR', sans-serif;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 4px 15px rgba(229,57,53,0.3);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px rgba(229,57,53,0.4);
+    }
+
+    .btn-secondary {
+      width: 100%;
+      padding: 12px;
+      background: #fff;
+      color: #E53935;
+      border: 1.5px solid #E53935;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      font-family: 'Noto Sans KR', sans-serif;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .btn-secondary:hover { background: #FFF5F5; }
+
+    .btn-small {
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      font-family: 'Noto Sans KR', sans-serif;
+      transition: all 0.2s;
+    }
+    .btn-call { background: #1976D2; color: #fff; }
+    .btn-navi { background: #4CAF50; color: #fff; }
+    .btn-disabled { background: #ccc; color: #888; cursor: default; }
+
+    /* 하단 탭바 */
+    .tab-bar {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding: 10px 0 18px;
+      background: #fff;
+      border-top: 1px solid #eee;
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+    }
+    .tab-item {
+      text-align: center;
+      font-size: 0.65rem;
+      color: #999;
+      cursor: pointer;
+      transition: color 0.3s;
+    }
+    .tab-item.active { color: #E53935; }
+    .tab-item-icon { font-size: 1.2rem; display: block; margin-bottom: 2px; }
+
+    /* 토글 스위치 */
+    .toggle-track {
+      width: 44px; height: 24px;
+      background: #ccc;
+      border-radius: 12px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.3s;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    .toggle-track.on { background: #4CAF50; }
+    .toggle-thumb {
+      width: 20px; height: 20px;
+      background: #fff;
+      border-radius: 50%;
+      position: absolute; top: 2px; left: 2px;
+      transition: left 0.3s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .toggle-track.on .toggle-thumb { left: 22px; }
+
+    /* 칩 / 태그 */
+    .chip {
+      display: inline-block;
+      padding: 10px 16px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1.5px solid #e0e0e0;
+      background: #fff;
+      color: #555;
+      margin: 4px;
+    }
+    .chip.selected {
+      background: #FFF3F0;
+      border-color: #E53935;
+      color: #E53935;
+      font-weight: 600;
+    }
+
+    /* 카드 */
+    .hospital-card {
+      background: #fff;
+      border-radius: 14px;
+      margin: 10px 16px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      display: flex;
+      gap: 12px;
+      transition: transform 0.2s;
+    }
+    .hospital-card:hover { transform: translateX(4px); }
+    .card-status-bar {
+      width: 5px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+    .status-green { background: #4CAF50; }
+    .status-orange { background: #FF9800; }
+    .status-red { background: #F44336; }
+    .card-content { flex: 1; }
+    .card-name { font-size: 0.95rem; font-weight: 700; color: #222; margin-bottom: 4px; }
+    .card-info { font-size: 0.78rem; color: #777; margin-bottom: 3px; }
+    .card-actions { display: flex; gap: 8px; margin-top: 10px; }
+
+    /* 스크린 설명 패널 */
+    .screen-info {
+      max-width: 340px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 16px;
+      padding: 24px;
+      color: #ccd6f6;
+      flex-shrink: 0;
+    }
+    .screen-info h3 {
+      font-size: 1.1rem;
+      color: #FF6F61;
+      margin-bottom: 12px;
+      font-weight: 700;
+    }
+    .screen-info p {
+      font-size: 0.85rem;
+      line-height: 1.7;
+      color: #8892b0;
+      margin-bottom: 12px;
+    }
+    .info-list { list-style: none; padding: 0; }
+    .info-list li {
+      font-size: 0.82rem;
+      color: #8892b0;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .info-list li::before { content: '▸ '; color: #E53935; }
+
+    /* 색상 팔레트 표시 */
+    .color-swatch {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      margin-right: 8px;
+      vertical-align: middle;
+      border: 2px solid rgba(255,255,255,0.1);
+    }
+
+    /* 숨김 */
+    .screen-panel { display: none; }
+    .screen-panel.visible { display: flex; }
+
+    /* 반응형 */
+    @media (max-width: 800px) {
+      .screen-canvas { flex-direction: column; align-items: center; }
+      .screen-info { max-width: 375px; }
+      .phone-frame { width: 340px; }
+    }
+
+    /* 스플래시 애니메이션 */
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .loading-dots span {
+      display: inline-block;
+      width: 8px; height: 8px;
+      background: #E53935;
+      border-radius: 50%;
+      margin: 0 4px;
+      animation: pulse 1.2s infinite;
+    }
+    .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    /* 지도 목업 */
+    .map-mock {
+      width: 100%;
+      height: 280px;
+      background: linear-gradient(135deg, #e8f5e9 0%, #fff9c4 30%, #e3f2fd 60%, #f3e5f5 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    .map-mock::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: 
+        repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(0,0,0,0.03) 40px, rgba(0,0,0,0.03) 41px),
+        repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(0,0,0,0.03) 40px, rgba(0,0,0,0.03) 41px);
+    }
+    .map-marker {
+      position: absolute;
+      width: 30px; height: 36px;
+      text-align: center;
+      font-size: 1.6rem;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .map-marker:hover { transform: scale(1.3); }
+    .map-pin { position: absolute; font-size: 0.55rem; font-weight: 700; color: #333; white-space: nowrap; bottom: -14px; left: 50%; transform: translateX(-50%); }
+    .map-me {
+      position: absolute;
+      width: 14px; height: 14px;
+      background: #1976D2;
+      border-radius: 50%;
+      border: 3px solid #fff;
+      box-shadow: 0 0 0 6px rgba(25,118,210,0.2), 0 2px 6px rgba(0,0,0,0.2);
+    }
+
+    /* 모드 전환 탭 */
+    .mode-tabs {
+      display: flex;
+      background: #eee;
+      border-radius: 10px;
+      padding: 3px;
+      gap: 2px;
+    }
+    .mode-tab {
+      flex: 1;
+      padding: 8px;
+      text-align: center;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      color: #888;
+      border: none;
+      background: transparent;
+      font-family: 'Noto Sans KR', sans-serif;
+    }
+    .mode-tab.active {
+      background: #fff;
+      color: #E53935;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+
+    /* 검색 바 */
+    .search-controls {
+      display: flex;
+      gap: 8px;
+      padding: 12px 16px;
+      background: #fff;
+      align-items: center;
+    }
+    .radius-select {
+      padding: 7px 12px;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-family: 'Noto Sans KR', sans-serif;
+      background: #fff;
+      color: #555;
+    }
+
+    /* 자동전화 바 */
+    .auto-call-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 16px;
+      background: #FFF8E1;
+      border-bottom: 1px solid #FFE082;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: #555;
+    }
+
+    /* 진행 상태 카드 */
+    .call-progress-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      background: #fff;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 0.85rem;
+    }
+    .call-status-icon { font-size: 1.1rem; }
+    .call-hospital { flex: 1; font-weight: 600; color: #333; }
+    .call-result { font-size: 0.78rem; color: #888; }
+    .call-result.success { color: #4CAF50; font-weight: 600; }
+    .call-result.fail { color: #F44336; }
+    .call-result.calling { color: #FF9800; }
+
+    /* 구급대원 기록 카드 */
+    .dispatch-card {
+      background: #fff;
+      border-radius: 14px;
+      margin: 10px 16px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .dispatch-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .dispatch-code { font-weight: 700; color: #333; font-size: 0.95rem; }
+    .dispatch-status {
+      font-size: 0.72rem;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+    .dispatch-complete { background: #E8F5E9; color: #2E7D32; }
+    .dispatch-progress { background: #FFF3E0; color: #E65100; }
+    .dispatch-info { font-size: 0.8rem; color: #777; line-height: 1.7; }
+
+    /* 타임라인 */
+    .timeline { padding: 0 20px; }
+    .timeline-item {
+      display: flex;
+      gap: 12px;
+      padding: 8px 0;
+      font-size: 0.82rem;
+      position: relative;
+    }
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: 47px;
+      top: 28px;
+      width: 2px;
+      height: calc(100% - 12px);
+      background: #e0e0e0;
+    }
+    .timeline-item:last-child::before { display: none; }
+    .timeline-time { width: 40px; font-weight: 600; color: #555; text-align: right; flex-shrink: 0; }
+    .timeline-dot {
+      width: 10px; height: 10px;
+      background: #E53935;
+      border-radius: 50%;
+      margin-top: 4px;
+      flex-shrink: 0;
+      z-index: 1;
+    }
+    .timeline-label { color: #666; }
+
+    /* 설정 항목 */
+    .setting-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 20px;
+      background: #fff;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 0.88rem;
+      color: #333;
+    }
+    .setting-section-title {
+      padding: 20px 20px 8px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #999;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* 다운로드 버튼 */
+    .download-buttons {
+      display: flex;
+      gap: 10px;
+      padding: 16px 20px;
+    }
+    .btn-download {
+      flex: 1;
+      padding: 14px;
+      border-radius: 14px;
+      text-align: center;
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.3s;
+      border: none;
+      font-family: 'Noto Sans KR', sans-serif;
+    }
+    .btn-pdf { background: #FFF0F0; color: #E53935; }
+    .btn-pdf:hover { background: #FFD9D7; }
+    .btn-excel { background: #E8F5E9; color: #2E7D32; }
+    .btn-excel:hover { background: #C8E6C9; }
+
+    /* 라디오/셀렉트 목업 */
+    .radio-group { display: flex; gap: 12px; margin: 6px 0; }
+    .radio-item {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 0.85rem; color: #555; cursor: pointer;
+    }
+    .radio-circle {
+      width: 18px; height: 18px;
+      border: 2px solid #ccc;
+      border-radius: 50%;
+      position: relative;
+    }
+    .radio-circle.checked { border-color: #E53935; }
+    .radio-circle.checked::after {
+      content: '';
+      width: 10px; height: 10px;
+      background: #E53935;
+      border-radius: 50%;
+      position: absolute;
+      top: 2px; left: 2px;
+    }
+
+    /* 음성 녹음 모달 */
+    .voice-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      border-radius: 38px;
+    }
+    .voice-modal {
+      background: #fff;
+      border-radius: 20px;
+      padding: 30px;
+      width: 85%;
+      text-align: center;
+    }
+    .voice-mic {
+      font-size: 3rem;
+      margin-bottom: 12px;
+      animation: pulse 1.5s infinite;
+    }
+    .voice-transcript {
+      background: #f5f5f5;
+      border-radius: 12px;
+      padding: 14px;
+      margin: 14px 0;
+      font-size: 0.9rem;
+      color: #333;
+      text-align: left;
+      line-height: 1.6;
+    }
+    .voice-actions { display: flex; gap: 10px; margin-top: 12px; }
+
+    /* 레전드 */
+    .legend {
+      display: flex;
+      gap: 14px;
+      padding: 8px 16px;
+      background: rgba(255,255,255,0.9);
+      border-radius: 10px;
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.7rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      z-index: 5;
+    }
+    .legend-item { display: flex; align-items: center; gap: 4px; }
+    .legend-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 헤더 -->
+  <div class="page-header">
+    <h1>🏥 바로응급실</h1>
+    <p>화면 설계 목업 — 총 10개 스크린 인터랙티브 프리뷰</p>
+  </div>
+
+  <!-- 화면 흐름도 -->
+  <div class="flow-section">
+    <h2>화면 흐름도 (Screen Flow)</h2>
+    <div class="flow-diagram">
+      <div class="flow-node" onclick="showScreen('splash')">스플래시</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node" onclick="showScreen('login')">로그인</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node" onclick="showScreen('dashboard')">메인 대시보드</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node" onclick="showScreen('input')">환자 상태 입력</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node" onclick="showScreen('map')">지도 검색 결과</div>
+      <span class="flow-arrow">↔</span>
+      <div class="flow-node" onclick="showScreen('list')">리스트 검색 결과</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node" onclick="showScreen('autocall')">자동전화 확인</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node" onclick="showScreen('navi')">길안내 선택</div>
+      <span class="flow-arrow">|</span>
+      <div class="flow-node" onclick="showScreen('dispatch')">업무 기록</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node" onclick="showScreen('settings')">설정</div>
+    </div>
+  </div>
+
+  <!-- 화면 선택 탭 -->
+  <div class="screen-nav" id="screenNav">
+    <button class="active" onclick="showScreen('splash')">S-001 스플래시</button>
+    <button onclick="showScreen('login')">S-002 로그인</button>
+    <button onclick="showScreen('register')">S-003 회원가입</button>
+    <button onclick="showScreen('dashboard')">S-004 대시보드</button>
+    <button onclick="showScreen('input')">S-005 환자입력</button>
+    <button onclick="showScreen('map')">S-006 지도모드</button>
+    <button onclick="showScreen('list')">S-007 리스트모드</button>
+    <button onclick="showScreen('autocall')">S-008 자동전화</button>
+    <button onclick="showScreen('dispatch')">S-009 업무기록</button>
+    <button onclick="showScreen('settings')">S-010 설정</button>
+  </div>
+
+  <!-- ===== S-001 스플래시 ===== -->
+  <div class="screen-canvas screen-panel visible" id="screen-splash">
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="screen-body screen-body-white" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:640px;background:linear-gradient(180deg,#fff 0%,#FFF5F5 100%);">
+        <div style="font-size:4.5rem;margin-bottom:16px;">🏥</div>
+        <div style="font-size:2rem;font-weight:900;color:#E53935;margin-bottom:6px;">바로응급실</div>
+        <div style="font-size:0.88rem;color:#999;font-weight:300;margin-bottom:50px;">긴급할 때, 바로 찾는 가장 가까운 응급실</div>
+        <div class="loading-dots">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+    </div>
+    <div class="screen-info">
+      <h3>S-001 스플래시 화면</h3>
+      <p>앱 실행 시 1~2초간 표시되는 브랜딩 화면입니다. 앱 로고와 슬로건을 보여주며, 백그라운드에서 인증 토큰을 확인합니다.</p>
+      <ul class="info-list">
+        <li>앱 로고 + 슬로건 표시</li>
+        <li>로딩 애니메이션</li>
+        <li>토큰 유효 → 자동 로그인 → 대시보드</li>
+        <li>토큰 없음/만료 → 로그인 화면</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== S-002 로그인 ===== -->
+  <div class="screen-canvas screen-panel" id="screen-login">
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="status-bar"><span>14:00</span><span>📶 🔋</span></div>
+      <div class="screen-body screen-body-white" style="padding:30px 24px;">
+        <div style="text-align:center;margin:20px 0 36px;">
+          <div style="font-size:2.5rem;">🏥</div>
+          <div style="font-size:1.5rem;font-weight:900;color:#E53935;margin-top:6px;">바로응급실</div>
+        </div>
+        <div class="input-group">
+          <label>이메일</label>
+          <input class="input-field" type="email" placeholder="이메일을 입력하세요">
+        </div>
+        <div class="input-group">
+          <label>비밀번호</label>
+          <input class="input-field" type="password" placeholder="비밀번호를 입력하세요">
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin:8px 0 20px;">
+          <input type="checkbox" id="autoLogin" checked>
+          <label for="autoLogin" style="font-size:0.82rem;color:#888;">자동 로그인 유지</label>
+        </div>
+        <button class="btn-primary">로그인</button>
+        <div style="text-align:center;margin:20px 0;color:#ccc;font-size:0.82rem;">── 또는 ──</div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn-secondary" style="background:#FEE500;border-color:#FEE500;color:#3B1E1E;">🟡 카카오</button>
+          <button class="btn-secondary" style="background:#fff;">🔵 구글</button>
+        </div>
+        <div style="text-align:center;margin-top:24px;font-size:0.85rem;">
+          <a href="#" style="color:#E53935;text-decoration:none;font-weight:500;" onclick="showScreen('register')">회원가입</a>
+          <span style="color:#ddd;margin:0 10px;">|</span>
+          <a href="#" style="color:#888;text-decoration:none;">비밀번호 찾기</a>
+        </div>
+      </div>
+    </div>
+    <div class="screen-info">
+      <h3>S-002 로그인 화면</h3>
+      <p>최초 실행 또는 토큰 만료 시 표시됩니다. 한 번 로그인하면 자동 로그인이 유지되어 이후 앱 실행 시 이 화면을 건너뜁니다.</p>
+      <ul class="info-list">
+        <li>이메일/비밀번호 입력 필드</li>
+        <li>자동 로그인 체크박스</li>
+        <li>소셜 로그인 (카카오/구글)</li>
+        <li>회원가입 / 비밀번호 찾기 링크</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== S-003 회원가입 ===== -->
+  <div class="screen-canvas screen-panel" id="screen-register">
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="app-header">
+        <span class="app-header-back" onclick="showScreen('login')">←</span>
+        <span class="app-header-title">회원가입</span>
+        <span></span>
+      </div>
+      <div class="screen-body screen-body-white" style="padding:20px 24px;">
+        <div class="input-group">
+          <label>📧 이메일</label>
+          <input class="input-field" placeholder="이메일 주소">
+        </div>
+        <div class="input-group">
+          <label>🔒 비밀번호</label>
+          <input class="input-field" type="password" placeholder="8자 이상 입력">
+        </div>
+        <div class="input-group">
+          <label>🔒 비밀번호 확인</label>
+          <input class="input-field" type="password" placeholder="비밀번호 재입력">
+        </div>
+        <div class="input-group">
+          <label>👤 닉네임</label>
+          <input class="input-field" placeholder="닉네임 (2~20자)">
+        </div>
+        <div style="margin:16px 0 8px;">
+          <label style="font-size:0.82rem;color:#888;font-weight:500;">사용자 유형</label>
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:16px;">
+          <div style="flex:1;padding:14px;border:2px solid #E53935;border-radius:12px;text-align:center;background:#FFF5F5;color:#E53935;font-weight:600;font-size:0.9rem;cursor:pointer;">
+            👤 일반 사용자
+          </div>
+          <div style="flex:1;padding:14px;border:2px solid #e0e0e0;border-radius:12px;text-align:center;color:#888;font-size:0.9rem;cursor:pointer;">
+            🚑 구급대원
+          </div>
+        </div>
+        <div class="input-group" style="opacity:0.4">
+          <label>🏢 소속기관 코드 (구급대원 전용)</label>
+          <input class="input-field" placeholder="기관코드 입력" disabled>
+        </div>
+        <button class="btn-primary" style="margin-top:10px;">회원가입 완료</button>
+      </div>
+    </div>
+    <div class="screen-info">
+      <h3>S-003 회원가입 화면</h3>
+      <p>신규 사용자 등록 화면입니다. 사용자 유형(일반/구급대원)에 따라 추가 입력 필드가 표시됩니다.</p>
+      <ul class="info-list">
+        <li>이메일, 비밀번호, 닉네임 입력</li>
+        <li>사용자 유형 선택 (일반/구급대원)</li>
+        <li>구급대원 선택 시 소속기관 코드 입력 활성화</li>
+        <li>가입 완료 후 자동 로그인</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== S-004 메인 대시보드 ===== -->
+  <div class="screen-canvas screen-panel" id="screen-dashboard">
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="status-bar"><span>14:00</span><span>📶 🔋</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;background:#fff;">
+        <div style="font-size:1.1rem;font-weight:900;color:#E53935;">🏥 바로응급실</div>
+        <div style="display:flex;gap:12px;font-size:1.1rem;">
+          <span style="cursor:pointer;">⚙️</span>
+          <span style="cursor:pointer;">👤</span>
+        </div>
+      </div>
+      <div class="screen-body" style="padding-bottom:70px;">
+        <div style="padding:20px;">
+          <div style="font-size:1.1rem;color:#333;font-weight:600;">안녕하세요, <span style="color:#E53935;">응급대원김</span>님 👋</div>
+        </div>
+        <!-- 메인 CTA -->
+        <div style="margin:0 16px 16px;padding:28px 20px;background:linear-gradient(135deg,#E53935,#FF6F61);border-radius:18px;color:#fff;text-align:center;cursor:pointer;box-shadow:0 8px 30px rgba(229,57,53,0.3);" onclick="showScreen('input')">
+          <div style="font-size:2.5rem;margin-bottom:8px;">🚨</div>
+          <div style="font-size:1.2rem;font-weight:800;margin-bottom:6px;">응급실 찾기</div>
+          <div style="font-size:0.82rem;opacity:0.9;">환자 상태를 입력하고<br>가장 가까운 응급실을 즉시 찾아보세요</div>
+        </div>
+        <!-- 퀵 액션 -->
+        <div style="display:flex;gap:10px;margin:0 16px 16px;">
+          <div style="flex:1;padding:18px 12px;background:#fff;border-radius:14px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.06);cursor:pointer;">
+            <div style="font-size:1.5rem;margin-bottom:4px;">📞</div>
+            <div style="font-size:0.82rem;font-weight:600;color:#333;">119 긴급전화</div>
+          </div>
+          <div style="flex:1;padding:18px 12px;background:#fff;border-radius:14px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.06);cursor:pointer;">
+            <div style="font-size:1.5rem;margin-bottom:4px;">📋</div>
+            <div style="font-size:0.82rem;font-weight:600;color:#333;">최근 검색기록</div>
+          </div>
+        </div>
+        <!-- 구급대원 전용 -->
+        <div style="margin:0 16px;padding:16px 20px;background:#fff;border-radius:14px;border-left:4px solid #1976D2;box-shadow:0 2px 8px rgba(0,0,0,0.06);cursor:pointer;" onclick="showScreen('dispatch')">
+          <div style="font-size:0.72rem;color:#1976D2;font-weight:700;margin-bottom:4px;">구급대원 전용</div>
+          <div style="font-size:0.95rem;font-weight:600;color:#333;">📝 업무 기록 관리</div>
+          <div style="font-size:0.78rem;color:#999;margin-top:2px;">출동 기록 조회 및 문서 다운로드</div>
+        </div>
+      </div>
+      <div class="tab-bar">
+        <div class="tab-item active"><span class="tab-item-icon">🏠</span>홈</div>
+        <div class="tab-item" onclick="showScreen('map')"><span class="tab-item-icon">🗺️</span>검색</div>
+        <div class="tab-item" onclick="showScreen('dispatch')"><span class="tab-item-icon">📋</span>기록</div>
+        <div class="tab-item" onclick="showScreen('settings')"><span class="tab-item-icon">⚙️</span>설정</div>
+      </div>
+    </div>
+    <div class="screen-info">
+      <h3>S-004 메인 대시보드</h3>
+      <p>로그인 후 첫 화면입니다. 응급실 찾기 CTA 버튼을 중심으로 빠른 접근이 가능하도록 구성했습니다.</p>
+      <ul class="info-list">
+        <li>대형 "응급실 찾기" CTA 버튼</li>
+        <li>119 긴급전화 바로가기</li>
+        <li>최근 검색 기록 바로가기</li>
+        <li>구급대원 전용: 업무 기록 관리</li>
+        <li>하단 탭 바 네비게이션</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== S-005 환자 상태 입력 ===== -->
+  <div class="screen-canvas screen-panel" id="screen-input">
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="app-header">
+        <span class="app-header-back" onclick="showScreen('dashboard')">←</span>
+        <span class="app-header-title">환자 상태 입력</span>
+        <span></span>
+      </div>
+      <div class="screen-body screen-body-white" style="padding:16px 20px;overflow-y:auto;max-height:600px;">
+        <div style="font-size:0.85rem;font-weight:600;color:#555;margin-bottom:10px;">증상 선택 (복수 가능)</div>
+        <div style="display:flex;flex-wrap:wrap;gap:0;">
+          <div class="chip selected">🤕 두통</div>
+          <div class="chip selected">💔 흉통</div>
+          <div class="chip">🩹 외상</div>
+          <div class="chip">😮‍💨 호흡곤란</div>
+          <div class="chip">🤢 복통</div>
+          <div class="chip">🔧 기타</div>
+        </div>
+        <div style="margin-top:18px;">
+          <div style="font-size:0.85rem;font-weight:600;color:#555;margin-bottom:8px;">상세 증상</div>
+          <div style="display:flex;gap:6px;">
+            <input class="input-field" style="flex:1" placeholder="증상을 상세히 입력하세요...">
+            <button style="width:48px;height:48px;border-radius:12px;background:#E53935;border:none;font-size:1.3rem;cursor:pointer;color:#fff;flex-shrink:0;">🎤</button>
+          </div>
+        </div>
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid #f0f0f0;">
+          <div style="font-size:0.85rem;font-weight:600;color:#555;margin-bottom:12px;">환자 정보</div>
+          <div style="margin-bottom:12px;">
+            <div style="font-size:0.8rem;color:#888;margin-bottom:6px;">성별</div>
+            <div class="radio-group">
+              <div class="radio-item"><div class="radio-circle checked"></div>남성</div>
+              <div class="radio-item"><div class="radio-circle"></div>여성</div>
+            </div>
+          </div>
+          <div style="margin-bottom:12px;">
+            <div style="font-size:0.8rem;color:#888;margin-bottom:6px;">연령대</div>
+            <select class="input-field" style="padding:12px 16px;">
+              <option>선택하세요</option>
+              <option>영유아 (0~5세)</option>
+              <option>소아 (6~17세)</option>
+              <option selected>성인 (18~64세)</option>
+              <option>고령 (65세+)</option>
+            </select>
+          </div>
+          <div style="margin-bottom:16px;">
+            <div style="font-size:0.8rem;color:#888;margin-bottom:6px;">의식 상태</div>
+            <div class="radio-group">
+              <div class="radio-item"><div class="radio-circle checked"></div>명료</div>
+              <div class="radio-item"><div class="radio-circle"></div>혼미</div>
+              <div class="radio-item"><div class="radio-circle"></div>무반응</div>
+            </div>
+          </div>
+        </div>
+        <button class="btn-primary" onclick="showScreen('map')" style="margin-top:8px;">🔍 응급실 검색</button>
+      </div>
+    </div>
+    <div class="screen-info">
+      <h3>S-005 환자 상태 입력</h3>
+      <p>응급 환자의 증상과 기본 정보를 입력하는 화면입니다. 증상 칩은 복수 선택 가능하며, 마이크 버튼으로 음성 입력도 지원합니다.</p>
+      <ul class="info-list">
+        <li>증상 카테고리 칩 (복수 선택)</li>
+        <li>상세 증상 텍스트 + 음성 입력 🎤</li>
+        <li>성별, 연령대, 의식상태 입력</li>
+        <li>검색 버튼으로 응급실 탐색 시작</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== S-006 지도 모드 ===== -->
+  <div class="screen-canvas screen-panel" id="screen-map">
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="app-header">
+        <span class="app-header-back" onclick="showScreen('input')">←</span>
+        <span class="app-header-title">응급실 검색</span>
+        <span class="app-header-icon">≡</span>
+      </div>
+      <div class="search-controls">
+        <select class="radius-select"><option>5km</option><option selected>10km</option><option>20km</option></select>
+        <div class="mode-tabs" style="flex:1;">
+          <button class="mode-tab active">🗺️ 지도</button>
+          <button class="mode-tab" onclick="showScreen('list')">📋 리스트</button>
+        </div>
+      </div>
+      <div class="auto-call-bar">
+        <span>자동전화 확인</span>
+        <div class="toggle-track" onclick="this.classList.toggle('on')">
+          <div class="toggle-thumb"></div>
+        </div>
+      </div>
+      <div class="screen-body" style="min-height:auto;padding:0;">
+        <div class="map-mock">
+          <!-- 마커들 -->
+          <div class="map-marker" style="top:50px;left:200px;">📍<div class="map-pin" style="color:#4CAF50;">A응급의료센터</div></div>
+          <div class="map-marker" style="top:110px;left:80px;">📍<div class="map-pin" style="color:#FF9800;">B대학병원</div></div>
+          <div class="map-marker" style="top:170px;left:260px;">📍<div class="map-pin" style="color:#F44336;">C병원</div></div>
+          <div class="map-marker" style="top:200px;left:140px;">📍<div class="map-pin" style="color:#4CAF50;">D의료원</div></div>
+          <!-- 현재 위치 -->
+          <div class="map-me" style="top:130px;left:175px;"></div>
+          <!-- 범례 -->
+          <div class="legend">
+            <div class="legend-item"><div class="legend-dot" style="background:#4CAF50;"></div>수용가능</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#FF9800;"></div>혼잡</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#F44336;"></div>불가</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#1976D2;"></div>내 위치</div>
+          </div>
+        </div>
+        <!-- 선택된 병원 카드 -->
+        <div class="hospital-card">
+          <div class="card-status-bar status-green"></div>
+          <div class="card-content">
+            <div class="card-name">🟢 A응급의료센터</div>
+            <div class="card-info">📏 1.2km | ⏱️ 5분</div>
+            <div class="card-info">🛏️ 가용 3/10 | 👨‍⚕️ 당직의사 있음</div>
+            <div class="card-actions">
+              <button class="btn-small btn-call">📞 전화</button>
+              <button class="btn-small btn-navi" onclick="showScreen('navi')">🧭 길안내</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="screen-info">
+      <h3>S-006 지도 모드 검색 결과</h3>
+      <p>현재 위치 중심 지도에 인근 응급실이 수용 상태에 따른 색상 마커로 표시됩니다.</p>
+      <ul class="info-list">
+        <li>🟢 녹색: 수용 가능 (여유 병상)</li>
+        <li>🟠 주황: 혼잡 (병상 부족)</li>
+        <li>🔴 빨강: 수용 불가 (만실)</li>
+        <li>🔵 파랑: 내 현재 위치</li>
+        <li>마커 탭 → 병원 정보 카드 팝업</li>
+        <li>검색 반경 변경 (5/10/20km)</li>
+        <li>자동전화 ON/OFF 토글</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== S-007 리스트 모드 ===== -->
+  <div class="screen-canvas screen-panel" id="screen-list">
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="app-header">
+        <span class="app-header-back" onclick="showScreen('input')">←</span>
+        <span class="app-header-title">응급실 검색</span>
+        <span class="app-header-icon">≡</span>
+      </div>
+      <div class="search-controls">
+        <select class="radius-select"><option>5km</option><option selected>10km</option><option>20km</option></select>
+        <div class="mode-tabs" style="flex:1;">
+          <button class="mode-tab" onclick="showScreen('map')">🗺️ 지도</button>
+          <button class="mode-tab active">📋 리스트</button>
+        </div>
+      </div>
+      <div class="auto-call-bar" style="background:#E8F5E9;border-color:#A5D6A7;">
+        <span>📞 자동전화 확인 중... (3/5)</span>
+        <div class="toggle-track on"><div class="toggle-thumb"></div></div>
+      </div>
+      <div class="screen-body" style="min-height:auto;padding:0 0 10px;">
+        <!-- 카드 1: 수용가능 -->
+        <div class="hospital-card">
+          <div class="card-status-bar status-green"></div>
+          <div class="card-content">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div class="card-name">A응급의료센터</div>
+              <span style="font-size:0.7rem;background:#E8F5E9;color:#2E7D32;padding:2px 8px;border-radius:10px;font-weight:600;">✅ 확인완료</span>
+            </div>
+            <div class="card-info">📏 1.2km | ⏱️ 5분</div>
+            <div class="card-info">🛏️ 가용 3/10 | 👨‍⚕️ 있음</div>
+            <div class="card-info">📞 02-1234-5678</div>
+            <div class="card-actions">
+              <button class="btn-small btn-call">📞 전화</button>
+              <button class="btn-small btn-navi" onclick="showScreen('navi')">🧭 길안내</button>
+            </div>
+          </div>
+        </div>
+        <!-- 카드 2: 혼잡 -->
+        <div class="hospital-card">
+          <div class="card-status-bar status-orange"></div>
+          <div class="card-content">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div class="card-name">B대학병원 응급실</div>
+              <span style="font-size:0.7rem;background:#FFF3E0;color:#E65100;padding:2px 8px;border-radius:10px;font-weight:600;">📞 확인중</span>
+            </div>
+            <div class="card-info">📏 3.5km | ⏱️ 12분</div>
+            <div class="card-info">🛏️ 가용 1/8 | 👨‍⚕️ 있음</div>
+            <div class="card-info">📞 02-2345-6789</div>
+            <div class="card-actions">
+              <button class="btn-small btn-call">📞 전화</button>
+              <button class="btn-small btn-navi" onclick="showScreen('navi')">🧭 길안내</button>
+            </div>
+          </div>
+        </div>
+        <!-- 카드 3: 수용불가 -->
+        <div class="hospital-card" style="opacity:0.6;">
+          <div class="card-status-bar status-red"></div>
+          <div class="card-content">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div class="card-name">C병원 응급의학과</div>
+              <span style="font-size:0.7rem;background:#FFEBEE;color:#C62828;padding:2px 8px;border-radius:10px;font-weight:600;">❌ 확인실패</span>
+            </div>
+            <div class="card-info">📏 5.1km | ⏱️ 18분</div>
+            <div class="card-info">🛏️ 가용 0/6 | 👨‍⚕️ 없음</div>
+            <div class="card-info">📞 02-3456-7890</div>
+            <div class="card-actions">
+              <button class="btn-small btn-disabled">수용불가</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="screen-info">
+      <h3>S-007 리스트 모드 검색 결과</h3>
+      <p>응급실 정보를 카드 리스트로 표시합니다. 각 카드의 좌측 색상 바로 수용 상태를, 우측 배지로 자동전화 확인 상태를 표시합니다.</p>
+      <ul class="info-list">
+        <li>병원명, 거리, 예상 소요시간</li>
+        <li>가용 병상 수 / 전체 병상 수</li>
+        <li>대응 의사 유무</li>
+        <li>응급실 전화번호</li>
+        <li>📞 전화 / 🧭 길안내 버튼</li>
+        <li>자동전화 확인 상태 배지</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== S-008 자동전화 확인 ===== -->
+  <div class="screen-canvas screen-panel" id="screen-autocall">
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="app-header">
+        <span class="app-header-back" onclick="showScreen('list')">←</span>
+        <span class="app-header-title">자동 전화 확인</span>
+        <span></span>
+      </div>
+      <div style="padding:16px 20px;background:#fff;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:0.9rem;font-weight:600;color:#333;">자동 전화 확인</span>
+        <div class="toggle-track on"><div class="toggle-thumb"></div></div>
+      </div>
+      <div style="padding:12px 20px;background:#E3F2FD;font-size:0.85rem;color:#1565C0;font-weight:500;">
+        📞 동시 확인 중... (3/5 완료)
+      </div>
+      <div class="screen-body" style="min-height:auto;background:#fff;">
+        <div class="call-progress-item">
+          <span class="call-status-icon">✅</span>
+          <span class="call-hospital">A응급의료센터</span>
+          <span class="call-result success">수용 가능</span>
+        </div>
+        <div class="call-progress-item">
+          <span class="call-status-icon">✅</span>
+          <span class="call-hospital">D의료원</span>
+          <span class="call-result success">수용 가능</span>
+        </div>
+        <div class="call-progress-item" style="background:#FFF8E1;">
+          <span class="call-status-icon">📞</span>
+          <span class="call-hospital">B대학병원</span>
+          <span class="call-result calling">통화 중...</span>
+        </div>
+        <div class="call-progress-item">
+          <span class="call-status-icon">⏳</span>
+          <span class="call-hospital">E종합병원</span>
+          <span class="call-result">대기 중</span>
+        </div>
+        <div class="call-progress-item">
+          <span class="call-status-icon">❌</span>
+          <span class="call-hospital">C병원</span>
+          <span class="call-result fail">확인 실패</span>
+        </div>
+      </div>
+      <div style="padding:16px 20px;">
+        <button class="btn-primary" onclick="showScreen('list')">확인 결과 지도에 반영</button>
+      </div>
+    </div>
+    <div class="screen-info">
+      <h3>S-008 자동 전화 확인</h3>
+      <p>3~5곳 응급실에 동시에 자동 전화를 걸어 수용 가능 여부를 확인합니다. 진행 상태가 실시간으로 업데이트됩니다.</p>
+      <ul class="info-list">
+        <li>✅ 확인 완료 (수용 가능/불가)</li>
+        <li>📞 통화 중 (진행 중)</li>
+        <li>⏳ 대기 중</li>
+        <li>❌ 확인 실패</li>
+        <li>ON/OFF 토글로 기능 제어</li>
+        <li>결과를 지도/리스트에 즉시 반영</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== S-009 업무 기록 (구급대원) ===== -->
+  <div class="screen-canvas screen-panel" id="screen-dispatch">
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="app-header">
+        <span class="app-header-back" onclick="showScreen('dashboard')">←</span>
+        <span class="app-header-title">업무 기록 상세</span>
+        <span></span>
+      </div>
+      <div class="screen-body screen-body-white" style="padding:16px 0;overflow-y:auto;max-height:580px;padding-bottom:20px;">
+        <div style="padding:0 20px 12px;border-bottom:1px solid #f0f0f0;">
+          <div style="font-size:1rem;font-weight:800;color:#333;">출동 #2026-0416-001</div>
+          <span class="dispatch-status dispatch-complete" style="display:inline-block;margin-top:4px;">✅ 완료</span>
+        </div>
+        <!-- 환자 정보 -->
+        <div style="padding:14px 20px;">
+          <div style="font-size:0.78rem;font-weight:700;color:#E53935;margin-bottom:8px;">─── 환자 정보 ───</div>
+          <div style="font-size:0.85rem;color:#555;line-height:1.9;">
+            <div>증상: <span style="color:#333;font-weight:600;">흉통, 호흡곤란</span></div>
+            <div>성별/연령: <span style="color:#333;font-weight:600;">남성 / 60대</span></div>
+            <div>의식상태: <span style="color:#333;font-weight:600;">혼미</span></div>
+            <div>중증도: <span style="color:#E53935;font-weight:700;">3등급 (긴급)</span></div>
+          </div>
+        </div>
+        <!-- 수용 병원 -->
+        <div style="padding:14px 20px;background:#f9f9f9;">
+          <div style="font-size:0.78rem;font-weight:700;color:#1976D2;margin-bottom:8px;">─── 수용 병원 ───</div>
+          <div style="font-size:0.85rem;color:#555;line-height:1.9;">
+            <div>🏥 <span style="color:#333;font-weight:600;">A응급의료센터</span></div>
+            <div>📍 서울시 강남구 테헤란로 123</div>
+            <div>📞 02-1234-5678</div>
+          </div>
+        </div>
+        <!-- 시간 기록 (타임라인) -->
+        <div style="padding:14px 20px;">
+          <div style="font-size:0.78rem;font-weight:700;color:#4CAF50;margin-bottom:12px;">─── 시간 기록 ───</div>
+          <div class="timeline">
+            <div class="timeline-item"><div class="timeline-time">14:00</div><div class="timeline-dot"></div><div class="timeline-label">출동 시작</div></div>
+            <div class="timeline-item"><div class="timeline-time">14:05</div><div class="timeline-dot"></div><div class="timeline-label">환자 접촉</div></div>
+            <div class="timeline-item"><div class="timeline-time">14:15</div><div class="timeline-dot"></div><div class="timeline-label">병원 출발</div></div>
+            <div class="timeline-item"><div class="timeline-time">14:32</div><div class="timeline-dot"></div><div class="timeline-label">병원 도착</div></div>
+            <div class="timeline-item"><div class="timeline-time">14:35</div><div class="timeline-dot"></div><div class="timeline-label">상황 종료</div></div>
+          </div>
+          <div style="margin-top:12px;padding:10px 16px;background:#FFF3E0;border-radius:10px;font-size:0.88rem;font-weight:700;color:#E65100;text-align:center;">
+            ⏱️ 총 소요시간: <span style="font-size:1.1rem;">35분</span>
+          </div>
+        </div>
+        <!-- 메모 -->
+        <div style="padding:14px 20px;">
+          <div style="font-size:0.78rem;font-weight:700;color:#888;margin-bottom:8px;">─── 메모 ───</div>
+          <div style="font-size:0.85rem;color:#666;background:#f9f9f9;padding:12px;border-radius:10px;">환자 안정 후 이송 완료. 보호자 현장 합류.</div>
+        </div>
+        <!-- 다운로드 -->
+        <div class="download-buttons">
+          <button class="btn-download btn-pdf">📄 PDF 다운로드</button>
+          <button class="btn-download btn-excel">📊 Excel 다운로드</button>
+        </div>
+      </div>
+    </div>
+    <div class="screen-info">
+      <h3>S-009 업무 기록 상세 (구급대원 전용)</h3>
+      <p>구급대원의 출동 기록 상세 화면입니다. 환자 정보, 수용 병원, 시간 타임라인, 메모가 포함되며 PDF/Excel 다운로드가 가능합니다.</p>
+      <ul class="info-list">
+        <li>환자 상태 정보 자동 포함</li>
+        <li>수용 병원 정보 (병원명, 주소, 전화)</li>
+        <li>시간 타임라인 (출동→종료)</li>
+        <li>총 처리 시간 자동 산출</li>
+        <li>추가 메모 기록</li>
+        <li>📄 PDF / 📊 Excel 다운로드</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== S-009-NAVI 길안내 선택 ===== -->
+  <div class="screen-canvas screen-panel" id="screen-navi">
+    <div class="phone-frame" style="position:relative;">
+      <div class="phone-notch"></div>
+      <div class="app-header">
+        <span class="app-header-back" onclick="showScreen('map')">←</span>
+        <span class="app-header-title">응급실 검색</span>
+        <span class="app-header-icon">≡</span>
+      </div>
+      <div class="screen-body" style="min-height:auto;padding:0;">
+        <div class="map-mock" style="height:380px;filter:brightness(0.6);">
+          <div class="map-marker" style="top:80px;left:200px;">📍</div>
+          <div class="map-me" style="top:200px;left:160px;"></div>
+        </div>
+      </div>
+      <!-- 바텀시트 오버레이 -->
+      <div style="position:absolute;bottom:0;left:0;right:0;background:#fff;border-radius:20px 20px 0 0;padding:24px 20px 30px;box-shadow:0 -4px 20px rgba(0,0,0,0.1);">
+        <div style="width:36px;height:4px;background:#ddd;border-radius:2px;margin:0 auto 16px;"></div>
+        <div style="font-size:1rem;font-weight:700;color:#333;margin-bottom:16px;">🧭 길안내 앱 선택</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:center;gap:14px;padding:14px;border:1.5px solid #e0e0e0;border-radius:14px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='#E53935';this.style.background='#FFF5F5'" onmouseout="this.style.borderColor='#e0e0e0';this.style.background='#fff'">
+            <div style="width:40px;height:40px;background:#FEE500;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;">🗺️</div>
+            <div><div style="font-weight:600;color:#333;font-size:0.92rem;">카카오내비</div><div style="font-size:0.75rem;color:#999;">카카오맵 앱으로 길안내</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;padding:14px;border:1.5px solid #e0e0e0;border-radius:14px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='#E53935';this.style.background='#FFF5F5'" onmouseout="this.style.borderColor='#e0e0e0';this.style.background='#fff'">
+            <div style="width:40px;height:40px;background:#E53935;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:#fff;">🚗</div>
+            <div><div style="font-weight:600;color:#333;font-size:0.92rem;">T맵</div><div style="font-size:0.75rem;color:#999;">T맵 앱으로 길안내</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;padding:14px;border:1.5px solid #e0e0e0;border-radius:14px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='#E53935';this.style.background='#FFF5F5'" onmouseout="this.style.borderColor='#e0e0e0';this.style.background='#fff'">
+            <div style="width:40px;height:40px;background:#1EC800;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:#fff;">📍</div>
+            <div><div style="font-weight:600;color:#333;font-size:0.92rem;">네이버지도</div><div style="font-size:0.75rem;color:#999;">네이버지도 앱으로 길안내</div></div>
+          </div>
+        </div>
+        <button style="width:100%;margin-top:14px;padding:12px;background:transparent;border:1px solid #ddd;border-radius:12px;color:#999;font-size:0.9rem;cursor:pointer;font-family:'Noto Sans KR',sans-serif;" onclick="showScreen('map')">취소</button>
+      </div>
+    </div>
+    <div class="screen-info">
+      <h3>길안내 앱 선택 (바텀시트)</h3>
+      <p>선택한 응급실로 길안내를 실행할 내비 앱을 선택하는 바텀시트입니다. 설치된 앱만 표시됩니다.</p>
+      <ul class="info-list">
+        <li>카카오내비 연동</li>
+        <li>T맵 연동</li>
+        <li>네이버지도 연동</li>
+        <li>선택 시 외부 앱 실행 + 경로 자동 설정</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== S-010 설정 ===== -->
+  <div class="screen-canvas screen-panel" id="screen-settings">
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="app-header">
+        <span class="app-header-back" onclick="showScreen('dashboard')">←</span>
+        <span class="app-header-title">설정</span>
+        <span></span>
+      </div>
+      <div class="screen-body screen-body-white" style="padding:0;overflow-y:auto;max-height:580px;padding-bottom:68px;">
+        <div class="setting-section-title">프로필</div>
+        <div class="setting-item">
+          <div>
+            <div style="font-weight:600;">👤 응급대원김</div>
+            <div style="font-size:0.78rem;color:#999;">user@example.com</div>
+          </div>
+          <span style="font-size:0.82rem;color:#E53935;cursor:pointer;">수정 ›</span>
+        </div>
+        <div class="setting-item">
+          <span>사용자 유형</span>
+          <span style="color:#1976D2;font-weight:600;font-size:0.85rem;">🚑 구급대원</span>
+        </div>
+
+        <div class="setting-section-title">검색 설정</div>
+        <div class="setting-item">
+          <span>기본 검색 반경</span>
+          <select class="radius-select"><option>5km</option><option selected>10km</option><option>20km</option></select>
+        </div>
+        <div class="setting-item">
+          <span>기본 내비 앱</span>
+          <select class="radius-select"><option selected>카카오내비</option><option>T맵</option><option>네이버지도</option></select>
+        </div>
+        <div class="setting-item">
+          <span>자동전화 기본값</span>
+          <div class="toggle-track"><div class="toggle-thumb"></div></div>
+        </div>
+
+        <div class="setting-section-title">알림</div>
+        <div class="setting-item">
+          <span>푸시 알림</span>
+          <div class="toggle-track on"><div class="toggle-thumb"></div></div>
+        </div>
+
+        <div class="setting-section-title">기타</div>
+        <div class="setting-item" style="cursor:pointer;">개인정보 처리방침 <span style="color:#ccc;">›</span></div>
+        <div class="setting-item" style="cursor:pointer;">서비스 이용약관 <span style="color:#ccc;">›</span></div>
+        <div class="setting-item" style="cursor:pointer;">오픈소스 라이선스 <span style="color:#ccc;">›</span></div>
+        <div class="setting-item">
+          <span>앱 버전</span>
+          <span style="color:#999;">1.0.0</span>
+        </div>
+        <div style="padding:20px;">
+          <button class="btn-secondary" style="margin-bottom:10px;">로그아웃</button>
+          <button style="width:100%;padding:12px;background:transparent;border:1px solid #eee;border-radius:12px;color:#ccc;font-size:0.82rem;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">회원탈퇴</button>
+        </div>
+      </div>
+      <div class="tab-bar">
+        <div class="tab-item" onclick="showScreen('dashboard')"><span class="tab-item-icon">🏠</span>홈</div>
+        <div class="tab-item" onclick="showScreen('map')"><span class="tab-item-icon">🗺️</span>검색</div>
+        <div class="tab-item" onclick="showScreen('dispatch')"><span class="tab-item-icon">📋</span>기록</div>
+        <div class="tab-item active"><span class="tab-item-icon">⚙️</span>설정</div>
+      </div>
+    </div>
+    <div class="screen-info">
+      <h3>S-010 설정 화면</h3>
+      <p>사용자 프로필, 검색 기본값, 알림 설정 등을 관리하는 화면입니다.</p>
+      <ul class="info-list">
+        <li>프로필 정보 확인 및 수정</li>
+        <li>기본 검색 반경 설정</li>
+        <li>기본 내비 앱 선택</li>
+        <li>자동전화 기본값 ON/OFF</li>
+        <li>푸시 알림 설정</li>
+        <li>로그아웃 / 회원탈퇴</li>
+      </ul>
+      <div style="margin-top:20px;">
+        <h3 style="font-size:0.95rem;margin-bottom:10px;">🎨 색상 팔레트</h3>
+        <div style="margin-bottom:6px;">
+          <span class="color-swatch" style="background:#E53935;"></span>
+          <span style="font-size:0.8rem;">Primary — #E53935</span>
+        </div>
+        <div style="margin-bottom:6px;">
+          <span class="color-swatch" style="background:#1976D2;"></span>
+          <span style="font-size:0.8rem;">Secondary — #1976D2</span>
+        </div>
+        <div style="margin-bottom:6px;">
+          <span class="color-swatch" style="background:#4CAF50;"></span>
+          <span style="font-size:0.8rem;">수용가능 — #4CAF50</span>
+        </div>
+        <div style="margin-bottom:6px;">
+          <span class="color-swatch" style="background:#FF9800;"></span>
+          <span style="font-size:0.8rem;">혼잡 — #FF9800</span>
+        </div>
+        <div style="margin-bottom:6px;">
+          <span class="color-swatch" style="background:#F44336;"></span>
+          <span style="font-size:0.8rem;">수용불가 — #F44336</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 화면 전환
+    function showScreen(id) {
+      // 모든 패널 숨기기
+      document.querySelectorAll('.screen-panel').forEach(p => p.classList.remove('visible'));
+      // 선택한 패널 표시
+      const panel = document.getElementById('screen-' + id);
+      if (panel) panel.classList.add('visible');
+      // 탭 버튼 활성화
+      document.querySelectorAll('.screen-nav button').forEach(btn => btn.classList.remove('active'));
+      const navBtns = document.querySelectorAll('.screen-nav button');
+      const screenMap = ['splash','login','register','dashboard','input','map','list','autocall','dispatch','settings'];
+      const idx = screenMap.indexOf(id);
+      if (idx >= 0 && navBtns[idx]) navBtns[idx].classList.add('active');
+      // 플로우 노드 활성화
+      document.querySelectorAll('.flow-node').forEach(n => n.classList.remove('active'));
+      const flowNodes = document.querySelectorAll('.flow-node');
+      const flowMap = ['splash','login','dashboard','input','map','list','autocall','navi','dispatch','settings'];
+      const flowIdx = flowMap.indexOf(id);
+      if (flowIdx >= 0 && flowNodes[flowIdx]) flowNodes[flowIdx].classList.add('active');
+      // 상단으로 스크롤
+      window.scrollTo({ top: 200, behavior: 'smooth' });
+    }
+
+    // 초기 활성화
+    document.querySelector('.flow-node').classList.add('active');
+
+    // 칩 토글
+    document.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', () => chip.classList.toggle('selected'));
+    });
+
+    // 토글 스위치
+    document.querySelectorAll('.toggle-track').forEach(track => {
+      track.addEventListener('click', () => track.classList.toggle('on'));
+    });
+  </script>
+
+</body>
+</html>
