@@ -11,7 +11,6 @@ export interface SymptomOption {
 
 // 증상 선택 목록
 export const SYMPTOM_OPTIONS: SymptomOption[] = [
-  { key: 'ANAPHYLAXIS', label: '아나필락시스', emoji: '⚠️', iconName: 'alert-circle-outline', seriousDiseaseCodes: ['HV12'] }, // 급성 알레르기
   { key: 'CHEST_PAIN', label: '흉통', emoji: '💔', iconName: 'heart-outline', seriousDiseaseCodes: ['HV1'] }, // 심근경색
   { key: 'HEADACHE', label: '두통', emoji: '🤕', iconName: 'flash-outline', seriousDiseaseCodes: ['HV2', 'HV3'] }, // 뇌출혈, 뇌경색
   { key: 'DYSPNEA', label: '호흡곤란', emoji: '😮‍💨', iconName: 'fitness-outline', seriousDiseaseCodes: ['HV1'] }, // 심장질환 등

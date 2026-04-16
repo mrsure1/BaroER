@@ -30,7 +30,6 @@ export type SymptomCategory =
   | 'TRAUMA'
   | 'DYSPNEA'
   | 'ABDOMINAL'
-  | 'ANAPHYLAXIS'
   | 'OTHER';
 
 // 환자 상태 입력 데이터
