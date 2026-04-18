@@ -1,355 +1,382 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Linking, Platform, Alert } from 'react-native';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  Linking,
+  Platform,
+  Switch,
+  Alert,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { WebView } from 'react-native-webview';
-import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/Colors';
+import { Colors, FontSize } from '@/constants/Colors';
+import NavigationHeader from '@/components/common/NavigationHeader';
 import { useSearchStore } from '@/src/stores/searchStore';
+import { useUiSettingsStore } from '@/src/stores/uiSettingsStore';
 import { openNavigation } from '@/src/services/navigation';
 import { Hospital } from '@/src/types';
-
-// 카카오 맵 HTML 템플릿 생성을 위한 헬퍼 함수
-const generateKakaoMapHtml = (kakaoKey: string, center: { lat: number, lng: number }, hospitals: Hospital[] = []) => {
-  const markersJson = JSON.stringify((hospitals || []).map(h => ({
-    id: h.id,
-    name: h.name,
-    lat: h.lat,
-    lng: h.lng,
-    beds: h.availableBeds,
-    status: h.status,
-    color: h.status === 'AVAILABLE' ? Colors.available : (h.status === 'BUSY' ? Colors.busy : Colors.full)
-  })));
-
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-      <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=${kakaoKey}"></script>
-      <style>
-        body, html, #map { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #f0f0f0; }
-        #error-overlay {
-          position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-          background: rgba(255,255,255,0.9); display: none;
-          align-items: center; justify-content: center; text-align: center;
-          padding: 20px; font-family: sans-serif; z-index: 9999;
-        }
-        .custom-overlay {
-          position: relative; bottom: 45px; border-radius: 12px; background: white;
-          padding: 4px 8px; border: 2px solid; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-          font-family: sans-serif; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center;
-        }
-        .custom-overlay:after {
-          content: ''; position: absolute; bottom: -8px; left: 50%; margin-left: -8px;
-          border-top: 8px solid white; border-left: 8px solid transparent; border-right: 8px solid transparent;
-        }
-      </style>
-    </head>
-    <body>
-      <div id="map"></div>
-      <div id="error-overlay">
-        <div>
-          <h3 style="color: #FF4444;">지도 로드 오류</h3>
-          <p id="error-msg">SDK를 불러올 수 없습니다.<br/>도메인 등록이나 API 키를 확인해 주세요.</p>
-        </div>
-      </div>
-      <script>
-        // 에러 로깅 함수
-        function logError(msg) {
-          window.ReactNativeWebView.postMessage(JSON.stringify({type: 'LOG', message: msg}));
-        }
-
-        window.onerror = function(msg, url, line) {
-          logError("JS Error: " + msg + " at " + line);
-          return false;
-        };
-
-        try {
-          logError("Using Key: " + "${kakaoKey}".substring(0, 4) + "****");
-          if (typeof kakao === 'undefined' || !kakao.maps) {
-            document.getElementById('error-overlay').style.display = 'flex';
-            logError("Kakao SDK not loaded");
-          } else {
-            var container = document.getElementById('map');
-            var options = {
-              center: new kakao.maps.LatLng(${center.lat}, ${center.lng}),
-              level: 4
-            };
-            var map = new kakao.maps.Map(container, options);
-
-            // 내 위치 마커
-            var meMarker = new kakao.maps.Marker({
-              position: new kakao.maps.LatLng(${center.lat}, ${center.lng}),
-              map: map
-            });
-
-            // 병원 마커 데이터 로드
-            var hospitalData = ${markersJson};
-            hospitalData.forEach(function(h) {
-              var content = '<div class="custom-overlay" style="border-color: ' + h.color + '; color: #333;" ' +
-                            'onclick="window.ReactNativeWebView.postMessage(JSON.stringify({type: \\'SELECT_HOSPITAL\\', id: \\'' + h.id + '\\'}))">' +
-                            h.beds + '</div>';
-
-              var customOverlay = new kakao.maps.CustomOverlay({
-                position: new kakao.maps.LatLng(h.lat, h.lng),
-                content: content,
-                yAnchor: 1
-              });
-              customOverlay.setMap(map);
-            });
-
-            kakao.maps.event.addListener(map, 'click', function() {
-              window.ReactNativeWebView.postMessage(JSON.stringify({type: 'DESELECT'}));
-            });
-            
-            logError("Map initialized successfully");
-          }
-        } catch (e) {
-          logError("Init Exception: " + e.message);
-          document.getElementById('error-overlay').style.display = 'flex';
-          document.getElementById('error-msg').innerText = e.message;
-        }
-      </script>
-    </body>
-    </html>
-  `;
-};
+import { buildNaverMapHtml } from '@/src/utils/naverMapHtml';
+import { getMetroHttpOrigin } from '@/src/utils/metroHttpOrigin';
 
 export default function MapScreen() {
   const router = useRouter();
-  const webViewRef = useRef<WebView>(null);
   const {
-    hospitals, isSearching, userLocation, searchRadius, setSearchRadius,
-    searchHospitals, severityScore,
+    hospitals,
+    isLoading,
+    userLocation,
+    filters,
+    setFilters,
+    searchHospitals,
   } = useSearchStore();
 
   const [selectedHospital, setSelectedHospital] = useState<Hospital | null>(null);
+  const { defaultSearchRadiusKm, autoCallDefault, defaultNavApp } = useUiSettingsStore();
+  const [autoCallEnabled, setAutoCallEnabled] = useState(autoCallDefault);
 
-  // KAKAO_APP_KEY (여기서는 환경변수 사용)
-  // 카카오 지도 API 키 (JavaScript 키 사용 필수)
-  const KAKAO_KEY = process.env.EXPO_PUBLIC_KAKAO_JS_KEY || process.env.EXPO_PUBLIC_KAKAO_REST_API_KEY || ''; 
+  useEffect(() => {
+    setFilters({ maxDistance: defaultSearchRadiusKm });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 지도 진입 시 기본 반경만 동기화
+  }, []);
 
-  const handleRadiusChange = (radius: number) => {
-    setSearchRadius(radius);
-    searchHospitals();
+  useEffect(() => {
+    if (hospitals.length === 0) {
+      void searchHospitals();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 지도 진입 시 데이터 없을 때만 1회 검색
+  }, []);
+
+  const naverClientId = process.env.EXPO_PUBLIC_NAVER_CLIENT_ID || '';
+
+  const filtered = useMemo(
+    () => hospitals.filter((h) => (h.distanceKm ?? 0) <= filters.maxDistance),
+    [hospitals, filters.maxDistance]
+  );
+
+  const centerCoord = {
+    lat: userLocation?.latitude ?? 37.5665,
+    lng: userLocation?.longitude ?? 126.978,
   };
+
+  /** 검색 완료 전에 WebView를 띄우면 기본 좌표 → 실제 위치로 HTML이 바뀌며 전체 리로드·깜빡임이 난다 */
+  const mapHtmlReady = Boolean(naverClientId) && !isLoading;
+
+  const mapHtml = useMemo(() => {
+    if (!naverClientId || !mapHtmlReady) return '';
+    return buildNaverMapHtml(naverClientId, centerCoord.lat, centerCoord.lng, filtered);
+  }, [naverClientId, mapHtmlReady, centerCoord.lat, centerCoord.lng, filtered]);
+
+  const onMessage = useCallback(
+    (event: { nativeEvent: { data: string } }) => {
+      try {
+        const data = JSON.parse(event.nativeEvent.data) as {
+          type: string;
+          id?: string;
+        };
+        if (data.type === 'SELECT_HOSPITAL' && data.id) {
+          const h = filtered.find((x) => x.id === data.id);
+          if (h) setSelectedHospital(h);
+        } else if (data.type === 'DESELECT') {
+          setSelectedHospital(null);
+        }
+      } catch {
+        /* ignore */
+      }
+    },
+    [filtered]
+  );
 
   const handleCall = (phone: string) => {
-    if (phone) Linking.openURL(`tel:${phone}`);
+    if (phone) Linking.openURL(`tel:${phone.replace(/[^0-9+]/g, '')}`);
   };
 
-  // WebView로부터의 메시지 처리
-  const onMessage = (event: any) => {
-    try {
-      const data = JSON.parse(event.nativeEvent.data);
-      if (data.type === 'SELECT_HOSPITAL') {
-        const hospital = hospitals.find(h => h.id === data.id);
-        if (hospital) setSelectedHospital(hospital);
-      } else if (data.type === 'DESELECT') {
-        setSelectedHospital(null);
-      } else if (data.type === 'LOG') {
-        console.log('[WebView Log]', data.message);
-      }
-    } catch (e) {
-      console.warn('WebView Message Error:', e);
-    }
-  };
-
-  // 상세 카드 배경색
-  const getCardBgColor = (status: string) => {
+  const getCardBg = (status: Hospital['status']) => {
     if (status === 'AVAILABLE') return '#F0FDF4';
     if (status === 'BUSY') return '#FFFBEB';
     return '#FEF2F2';
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusTint = (status: Hospital['status']) => {
     if (status === 'AVAILABLE') return Colors.available;
     if (status === 'BUSY') return Colors.busy;
     return Colors.full;
   };
 
-  const centerCoord = {
-    lat: userLocation?.latitude || 37.5665,
-    lng: userLocation?.longitude || 126.9780
+  const etaLabel = (h: Hospital) => {
+    if (h.routeSource === 'naver_traffic') return `약 ${h.etaMin}분 · 실시간 교통`;
+    return `약 ${h.etaMin}분 · 직선 거리 기준`;
   };
+
+  const navProvider = defaultNavApp === 'google' ? 'kakao' : defaultNavApp;
+
+  /** NCP Maps 웹 서비스 URL = 이 origin 과 동일하게 등록 (실기기는 Metro IP가 바뀌므로 getMetroHttpOrigin 사용) */
+  const naverMapWebOrigin = getMetroHttpOrigin();
 
   return (
     <View style={styles.container}>
-      {/* 상단 컨트롤 레이어 */}
-      <View style={styles.headerLayer}>
-        <View style={styles.modeToggle}>
-          <TouchableOpacity style={[styles.modeTab, styles.modeTabActive]}>
-            <Ionicons name="map" size={18} color={Colors.white} style={{ marginRight: 4 }} />
-            <Text style={[styles.modeTabText, styles.modeTabTextActive]}>지도</Text>
+      <NavigationHeader
+        title="응급실 검색"
+        showBack
+        rightElement={
+          <TouchableOpacity onPress={() => Alert.alert('필터', '추가 필터는 추후 연동됩니다.')} style={{ padding: 4 }}>
+            <Ionicons name="menu-outline" size={24} color={Colors.text} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.modeTab} onPress={() => router.replace('/(main)/search/list')}>
-            <Ionicons name="list" size={18} color={Colors.divider} style={{ marginRight: 4 }} />
-            <Text style={styles.modeTabText}>리스트</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.radiusSliderBox}>
-          <View style={styles.sliderLabelRow}>
-            <Ionicons name="search" size={16} color={Colors.primary} />
-            <Text style={styles.sliderLabel}> 검색 반경: <Text style={styles.sliderValue}>{searchRadius}km</Text></Text>
-          </View>
-          <View style={styles.sliderContainer}>
-            <Text style={styles.sliderLimit}>5km</Text>
-            <View 
-              style={styles.sliderTrack}
-              onStartShouldSetResponder={() => true}
-              onMoveShouldSetResponder={() => true}
-              onResponderMove={(e) => {
-                const { locationX } = e.nativeEvent;
-                // 트랙의 대략적인 너비를 220 정도로 가정 (Padding 제외)
-                const newRadius = Math.round((locationX / 220) * 95 + 5);
-                const clamped = Math.max(5, Math.min(100, Math.round(newRadius / 5) * 5));
-                if (clamped !== searchRadius) setSearchRadius(clamped);
-              }}
-              onResponderRelease={() => searchHospitals()}
-            >
-              <View style={[styles.sliderFill, { width: `${((searchRadius - 5) / 95) * 100}%` }]} />
-              <View style={[styles.sliderThumb, { left: `${((searchRadius - 5) / 95) * 100}%` }]} />
-            </View>
-            <Text style={styles.sliderLimit}>100km</Text>
-          </View>
-        </View>
-
-        {severityScore && (
-          <View style={styles.triageMiniBadge}>
-            <Text style={styles.triageMiniText}>KTAS Lv.{severityScore}</Text>
-          </View>
-        )}
-      </View>
-
-      {/* 카카오맵 영역 (WebView) */}
-      <WebView
-        ref={webViewRef}
-        originWhitelist={['*']}
-        source={{ 
-          html: generateKakaoMapHtml(KAKAO_KEY, centerCoord, hospitals),
-          baseUrl: 'http://localhost' 
-        }}
-        style={styles.map}
-        onMessage={onMessage}
-        javaScriptEnabled={true}
-        domStorageEnabled={true}
-        mixedContentMode="always"
-        allowFileAccess={true}
-        scalesPageToFit={true}
+        }
       />
 
-      {/* 하단 선택 카드 */}
+      <View style={styles.mapArea}>
+        <View style={[styles.headerLayer, { paddingTop: 8 }]}>
+          <View style={styles.toolbarRow}>
+            <TouchableOpacity
+              style={styles.radiusChip}
+              onPress={() => {
+                const order: (5 | 10 | 20)[] = [5, 10, 20];
+                const cur = filters.maxDistance as 5 | 10 | 20;
+                const idx = Math.max(0, order.indexOf(cur));
+                const next = order[(idx + 1) % order.length];
+                setFilters({ maxDistance: next });
+              }}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.radiusChipText}>{filters.maxDistance}km ▼</Text>
+            </TouchableOpacity>
+            <View style={styles.modeToggle}>
+              <TouchableOpacity style={[styles.modeTab, styles.modeTabActive]}>
+                <Ionicons name="map" size={18} color="#fff" style={{ marginRight: 4 }} />
+                <Text style={[styles.modeTabText, styles.modeTabTextActive]}>지도</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modeTab} onPress={() => router.replace('/(main)/search/list')}>
+                <Ionicons name="list-outline" size={18} color="#6B7280" style={{ marginRight: 4 }} />
+                <Text style={styles.modeTabText}>리스트</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.autoCallRow}>
+            <Text style={styles.autoCallLabel}>자동전화확인</Text>
+            <Switch
+              value={autoCallEnabled}
+              onValueChange={setAutoCallEnabled}
+              trackColor={{ true: Colors.available, false: '#D1D5DB' }}
+              thumbColor="#fff"
+            />
+          </View>
+        </View>
+
+      {!naverClientId ? (
+        <View style={styles.fallback}>
+          <Ionicons name="map-outline" size={48} color="#D1D5DB" />
+          <Text style={styles.fallbackText}>EXPO_PUBLIC_NAVER_CLIENT_ID를 설정해 주세요.</Text>
+        </View>
+      ) : !mapHtmlReady || !mapHtml ? (
+        <View style={styles.fallback}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>위치와 병원 정보를 불러오는 중…</Text>
+        </View>
+      ) : (
+        <WebView
+          originWhitelist={['*']}
+          source={{ html: mapHtml, baseUrl: naverMapWebOrigin }}
+          style={styles.map}
+          onMessage={onMessage}
+          javaScriptEnabled
+          domStorageEnabled
+          mixedContentMode="always"
+          setBuiltInZoomControls={false}
+        />
+      )}
+
       {selectedHospital && (
-        <View style={[styles.detailCard, { backgroundColor: getCardBgColor(selectedHospital.status) }]}>
+        <View style={[styles.detailCard, { backgroundColor: getCardBg(selectedHospital.status) }]}>
           <View style={styles.cardHeader}>
-            <View>
-              <Text style={styles.hospitalName}>{selectedHospital.name}</Text>
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <Text style={styles.hospitalName} numberOfLines={2}>
+                {selectedHospital.status === 'FULL' ? '🔴 ' : selectedHospital.status === 'BUSY' ? '🟠 ' : '🟢 '}
+                {selectedHospital.name}
+              </Text>
               <Text style={styles.hospitalDist}>
-                <Ionicons name="swap-horizontal" size={14} color={Colors.textSecondary} /> {selectedHospital.distanceKm}km | 
-                <Ionicons name="time-outline" size={14} color={Colors.textSecondary} /> 약 {selectedHospital.etaMin}분
+                {selectedHospital.distanceKm}km · {etaLabel(selectedHospital)}
               </Text>
             </View>
-            <View style={[styles.statusTag, { backgroundColor: getStatusColor(selectedHospital.status) + '20' }]}>
-              <Text style={[styles.statusTagText, { color: getStatusColor(selectedHospital.status) }]}>
-                {selectedHospital.availableBeds}석 가용
+            <View style={[styles.statusTag, { backgroundColor: getStatusTint(selectedHospital.status) + '22' }]}>
+              <Text style={[styles.statusTagText, { color: getStatusTint(selectedHospital.status) }]}>
+                가용 {selectedHospital.availableBeds} / {selectedHospital.totalBeds}
               </Text>
             </View>
           </View>
 
           <View style={styles.actions}>
-            <TouchableOpacity 
-              style={[styles.actionBtn, { backgroundColor: Colors.secondary }]}
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.actionSecondary]}
               onPress={() => handleCall(selectedHospital.phone)}
             >
-              <Ionicons name="call" size={18} color={Colors.white} style={{ marginRight: 6 }} />
-              <Text style={styles.actionBtnText}>전화 문의</Text>
+              <Ionicons name="call-outline" size={18} color={Colors.text} style={{ marginRight: 6 }} />
+              <Text style={styles.actionBtnTextDark}>전화</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.actionBtn, { backgroundColor: Colors.available }]}
-              onPress={() => openNavigation('kakao', selectedHospital.name, selectedHospital.lat, selectedHospital.lng)}
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.actionPrimary]}
+              onPress={() =>
+                openNavigation(
+                  navProvider,
+                  selectedHospital.name,
+                  selectedHospital.lat,
+                  selectedHospital.lng,
+                  selectedHospital.address
+                )
+              }
             >
-              <Ionicons name="navigate" size={18} color={Colors.white} style={{ marginRight: 6 }} />
-              <Text style={styles.actionBtnText}>길 안내 시작</Text>
+              <Ionicons name="navigate" size={18} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={styles.actionBtnTextLight}>길안내</Text>
             </TouchableOpacity>
           </View>
         </View>
       )}
 
-      {isSearching && (
-        <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+      {isLoading && mapHtmlReady && (
+        <View style={styles.loadingBanner} pointerEvents="none">
+          <ActivityIndicator size="small" color={Colors.primary} />
+          <Text style={styles.loadingBannerText}>목록 갱신 중…</Text>
         </View>
       )}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
+  mapArea: { flex: 1, position: 'relative' },
   headerLayer: {
-    position: 'absolute', top: 50, left: 16, right: 16, zIndex: 10,
-    gap: 12,
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    top: 8,
+    zIndex: 10,
+    gap: 8,
   },
-  modeToggle: { 
-    flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.9)', 
-    borderRadius: 14, padding: 4, elevation: 5, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10,
+  toolbarRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  radiusChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
   },
-  modeTab: { 
-    flex: 1, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', 
-    borderRadius: 10, flexDirection: 'row' 
+  radiusChipText: { fontSize: 13, fontWeight: '800', color: Colors.text },
+  autoCallRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+  },
+  autoCallLabel: { fontSize: 13, fontWeight: '700', color: Colors.text },
+  modeToggle: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.94)',
+    borderRadius: 14,
+    padding: 4,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+      },
+      android: { elevation: 4 },
+    }),
+  },
+  modeTab: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 11,
+    flexDirection: 'row',
   },
   modeTabActive: { backgroundColor: Colors.primary },
-  modeTabText: { fontSize: FontSize.sm, fontWeight: '700', color: '#868E96' },
+  modeTabText: { fontSize: FontSize.sm, fontWeight: '700', color: '#6B7280' },
   modeTabTextActive: { color: '#fff' },
-  
-  radiusSliderBox: {
-    backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 20, 
-    padding: 16, elevation: 8, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 15,
-  },
-  sliderLabelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  sliderLabel: { fontSize: 13, fontWeight: '700', color: '#444' },
-  sliderValue: { color: Colors.primary, fontSize: 16 },
-  sliderContainer: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  sliderLimit: { fontSize: 11, color: '#999', fontWeight: '600' },
-  sliderTrack: { flex: 1, height: 6, backgroundColor: '#E9ECEF', borderRadius: 3, position: 'relative' },
-  sliderFill: { position: 'absolute', height: '100%', backgroundColor: Colors.primary, borderRadius: 3 },
-  sliderThumb: { 
-    position: 'absolute', width: 20, height: 20, borderRadius: 10, 
-    backgroundColor: '#fff', borderWidth: 3, borderColor: Colors.primary,
-    top: -7, marginLeft: -10, elevation: 3, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 3,
-  },
-  sliderSteppers: { flexDirection: 'row', marginTop: 10 },
-  stepBtn: { backgroundColor: '#F8F9FA', paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: '#DEE2E6' },
-  stepBtnText: { fontSize: 12, color: '#495057', fontWeight: '700' },
-
-  triageMiniBadge: {
-    alignSelf: 'center', backgroundColor: 'rgba(0,0,0,0.8)', 
-    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20,
-  },
-  triageMiniText: { color: '#fff', fontSize: 11, fontWeight: '800' },
 
   map: { flex: 1 },
 
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255,255,255,0.5)',
-    alignItems: 'center', justifyContent: 'center', zIndex: 20,
+  loadingBanner: {
+    position: 'absolute',
+    bottom: 24,
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    zIndex: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+      },
+      android: { elevation: 6 },
+    }),
   },
+  loadingBannerText: { fontSize: 14, color: '#6B7280', fontWeight: '600' },
+  loadingText: { marginTop: 12, fontSize: 14, color: '#6B7280', fontWeight: '600', textAlign: 'center' },
+
+  fallback: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
+  fallbackText: { marginTop: 12, textAlign: 'center', color: '#9CA3AF', fontSize: 14 },
 
   detailCard: {
-    position: 'absolute', bottom: 30, left: 16, right: 16,
-    borderRadius: 24, padding: 20, elevation: 10, 
-    shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 15,
-    borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)',
+    position: 'absolute',
+    bottom: 28,
+    left: 16,
+    right: 16,
+    borderRadius: 22,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.12,
+        shadowRadius: 20,
+      },
+      android: { elevation: 10 },
+    }),
   },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
-  hospitalName: { fontSize: 18, fontWeight: '800', color: '#1A1A1A', marginBottom: 4 },
-  hospitalDist: { fontSize: 13, color: '#666', fontWeight: '500' },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 },
+  hospitalName: { fontSize: 17, fontWeight: '800', color: '#111827', marginBottom: 4 },
+  hospitalDist: { fontSize: 13, color: '#6B7280', fontWeight: '500', lineHeight: 18 },
   statusTag: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },
   statusTagText: { fontSize: 12, fontWeight: '800' },
-  
+
   actions: { flexDirection: 'row', gap: 10 },
-  actionBtn: { flex: 1, height: 50, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  actionBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  actionBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+  },
+  actionSecondary: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB' },
+  actionPrimary: { backgroundColor: Colors.primary },
+  actionBtnTextDark: { color: '#111827', fontSize: 15, fontWeight: '700' },
+  actionBtnTextLight: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });

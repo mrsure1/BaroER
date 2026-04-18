@@ -64,9 +64,12 @@ export interface Hospital {
   status: HospitalStatus;
   distanceKm?: number;
   etaMin?: number;
+  /** UI 리스트용 라벨 */
+  routeSource?: 'naver_traffic' | 'estimate';
   lastUpdated: string;
-  seriousStatus?: Record<string, 'Y' | 'N'>; // 중증질환별 수용 가능 여부 (HV1, HV12 등)
-  realtimeMsg?: string;                     // 병원별 실시간 특이사항 메시지
+  seriousStatus?: Record<string, 'Y' | 'N'>;
+  realtimeMsg?: string;
+  seriousDiseases?: string[];
 }
 
 // 출동 기록 상태

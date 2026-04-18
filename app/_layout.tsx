@@ -1,75 +1,102 @@
-// 루트 레이아웃 - 인증 가드 + 네비게이션 구조
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useFonts } from 'expo-font';
-import { Slot, useRouter, useSegments } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useFonts, Inter_400Regular, Inter_700Bold, Inter_900Black } from '@expo-google-fonts/inter';
 import { useAuthStore } from '@/src/stores/authStore';
-import { auth } from '@/src/services/firebase';
-import { fetchUserProfile } from '@/src/services/auth';
-import { onAuthStateChanged } from 'firebase/auth';
+import { useRouter, useSegments, usePathname } from 'expo-router';
+import { Colors } from '@/constants/Colors';
 
-export { ErrorBoundary } from 'expo-router';
-
-// 스플래시 화면 유지
 SplashScreen.preventAutoHideAsync();
+
+const FONT_BOOTSTRAP_MS = 6000;
+const AUTH_BOOTSTRAP_MS = 10000;
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-    ...FontAwesome.font,
+    Inter_400Regular,
+    Inter_700Bold,
+    Inter_900Black,
   });
 
-  const { isLoggedIn, isLoading, setUser, setLoading } = useAuthStore();
-  const segments = useSegments();
-  const router = useRouter();
-
-  // 폰트 로딩 에러 처리
+  const [fontTimedOut, setFontTimedOut] = useState(false);
   useEffect(() => {
-    if (fontError) throw fontError;
-  }, [fontError]);
-
-  // Firebase 기반 세션 모니터링
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        // 인증 세션이 복구된 경우, 프로필 데이터 로드
-        const profile = await fetchUserProfile(user.uid);
-        setUser(profile);
-      } else {
-        // 미인증 상태
-        setUser(null);
-      }
-    });
-
-    return () => unsubscribe();
+    const id = setTimeout(() => setFontTimedOut(true), FONT_BOOTSTRAP_MS);
+    return () => clearTimeout(id);
   }, []);
 
-  // 폰트 + 인증 체크 완료 후 스플래시 숨김
-  useEffect(() => {
-    if (fontsLoaded && !isLoading) {
-      SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded, isLoading]);
+  const fontsReady = fontsLoaded || fontError != null || fontTimedOut;
 
-  // 인증 기반 라우팅 가드
+  const { isLoggedIn, isLoading, checkAuth } = useAuthStore();
+
   useEffect(() => {
-    if (isLoading || !fontsLoaded) return;
+    if (__DEV__ && fontError) console.warn('[fonts] load failed, using system fonts', fontError);
+  }, [fontError]);
+
+  /** AsyncStorage 등이 멈출 때 무한 로딩 방지 */
+  useEffect(() => {
+    const id = setTimeout(() => {
+      if (useAuthStore.getState().isLoading) {
+        useAuthStore.getState().setLoading(false);
+      }
+    }, AUTH_BOOTSTRAP_MS);
+    return () => clearTimeout(id);
+  }, []);
+
+  const segments = useSegments();
+  const pathname = usePathname();
+  const router = useRouter();
+
+  useEffect(() => {
+    void checkAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 앱 시작 시 1회만
+  }, []);
+
+  useEffect(() => {
+    if (isLoading || !fontsReady) return;
+
+    const atRootSplash = pathname === '/' || pathname === '';
+    if (atRootSplash) return;
 
     const inAuthGroup = segments[0] === '(auth)';
 
     if (!isLoggedIn && !inAuthGroup) {
-      // 미인증 → 로그인 화면으로 이동
       router.replace('/(auth)/login');
     } else if (isLoggedIn && inAuthGroup) {
-      // 인증됨 → 메인 화면으로 이동 (자동 로그인)
       router.replace('/(main)');
     }
-  }, [isLoggedIn, isLoading, fontsLoaded, segments]);
+  }, [isLoggedIn, isLoading, segments, fontsReady, pathname, router]);
 
-  if (!fontsLoaded || isLoading) {
-    return null;
+  /** 네이티브 스플래시 걷기 — 실패해도 앱이 빨간 RN 오류 화면으로 안 넘어가게 */
+  useEffect(() => {
+    void SplashScreen.hideAsync().catch((e) => {
+      if (__DEV__) console.warn('[splash] hideAsync', e);
+    });
+  }, [fontsReady, isLoading]);
+
+  /** null 대신 흰 배경 — Android에서 검은 화면처럼 보이는 문제 완화 */
+  if (!fontsReady || isLoading) {
+    return (
+      <View style={styles.boot}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
   }
 
-  return <Slot />;
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      <Stack.Screen name="(main)" options={{ headerShown: false }} />
+      <Stack.Screen name="index" options={{ headerShown: false }} />
+    </Stack>
+  );
 }
+
+const styles = StyleSheet.create({
+  boot: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

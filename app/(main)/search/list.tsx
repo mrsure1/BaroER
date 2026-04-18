@@ -1,494 +1,612 @@
-// 응급실 리스트 모드 검색 결과 (S-007) — Phase 3: 실데이터 연동
-import React from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView,
-  ActivityIndicator, Linking, Alert,
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
+  Platform,
+  Alert,
+  Linking,
+  Modal,
+  Switch,
+  Pressable,
 } from 'react-native';
-import { useRef } from 'react';
-import { Ionicons } from '@expo/vector-icons';
+import Svg, { Circle } from 'react-native-svg';
 import { useRouter } from 'expo-router';
-import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/Colors';
+import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '@/constants/Colors';
 import { useSearchStore } from '@/src/stores/searchStore';
 import { Hospital, HospitalStatus } from '@/src/types';
-import { openNavigation } from '@/src/services/navigation';
-// RADIUS_OPTIONS 제거 (슬라이더로 대체)
-import Svg, { Circle } from 'react-native-svg';
-import { getKTASMessage } from '@/src/services/triage';
-import { SYMPTOM_OPTIONS } from '@/src/constants/symptoms';
+import NavigationHeader from '@/components/common/NavigationHeader';
+import HospitalDetailModal from '@/src/components/HospitalDetailModal';
+import NaviSelectionModal from '@/src/components/NaviSelectionModal';
+import { appConfig } from '@/src/config/appConfig';
+import { useUiSettingsStore } from '@/src/stores/uiSettingsStore';
 
-// 수용 상태 설정
-const STATUS_CONFIG: Record<HospitalStatus, { color: string; label: string; badgeBg: string }> = {
-  AVAILABLE: { color: Colors.available, label: '수용가능', badgeBg: Colors.badgeGreen },
-  BUSY: { color: Colors.busy, label: '혼잡', badgeBg: Colors.badgeOrange },
-  FULL: { color: Colors.full, label: '수용불가', badgeBg: Colors.badgeRed },
+const BedAvailabilityRing = ({ percent, status }: { percent: number; status: HospitalStatus }) => {
+  const size = 52;
+  const stroke = 5;
+  const r = (size - stroke) / 2;
+  const cx = size / 2;
+  const cy = size / 2;
+  const circumference = 2 * Math.PI * r;
+  const offset = circumference - (Math.min(100, Math.max(0, percent)) / 100) * circumference;
+
+  let color = '#22C55E';
+  if (status === 'BUSY') color = '#F97316';
+  if (status === 'FULL') color = '#EF4444';
+
+  return (
+    <View style={styles.chartContainer}>
+      <Svg width={size} height={size}>
+        <Circle cx={cx} cy={cy} r={r} stroke="#EEF2F7" strokeWidth={stroke} fill="none" />
+        <Circle
+          cx={cx}
+          cy={cy}
+          r={r}
+          stroke={color}
+          strokeWidth={stroke}
+          fill="none"
+          strokeDasharray={`${circumference} ${circumference}`}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${cx} ${cy})`}
+        />
+      </Svg>
+      <View style={styles.chartLabelWrap}>
+        <Text style={[styles.chartPercent, { color }]}>{Math.round(percent)}%</Text>
+      </View>
+    </View>
+  );
 };
 
 export default function HospitalListScreen() {
   const router = useRouter();
   const {
-    hospitals, isSearching, searchError, searchRadius, setSearchRadius,
-    searchHospitals, autoCallEnabled, setAutoCallEnabled,
-    severityScore, selectedSymptoms, // 선택된 증상 가져오기
+    hospitals,
+    isLoading,
+    searchError,
+    searchHospitals,
+    filters,
+    setFilters,
+    lastUpdated,
   } = useSearchStore();
 
-  const sliderWidthRef = useRef<number>(0);
-  const sliderPageXRef = useRef<number>(0);
-  const trackRef = useRef<View>(null);
-  const sliderWidthEmptyRef = useRef(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const [selectedHospital, setSelectedHospital] = useState<Hospital | null>(null);
+  const [isDetailVisible, setIsDetailVisible] = useState(false);
+  const [isNaviVisible, setIsNaviVisible] = useState(false);
+  const [targetHospital, setTargetHospital] = useState<Hospital | null>(null);
 
-  // 원형 차트 컴포넌트
-  const RadialChart = ({ percent, color }: { percent: number; color: string }) => {
-    const size = 60;
-    const strokeWidth = 5;
-    const radius = (size - strokeWidth) / 2;
-    const circumference = radius * 2 * Math.PI;
-    const strokeDashoffset = circumference - (percent / 100) * circumference;
+  const { defaultSearchRadiusKm, autoCallDefault } = useUiSettingsStore();
+  const [autoCallEnabled, setAutoCallEnabled] = useState(autoCallDefault);
+  const [callProgress, setCallProgress] = useState(0);
+  const [radiusModalVisible, setRadiusModalVisible] = useState(false);
+
+  useEffect(() => {
+    setFilters({ maxDistance: defaultSearchRadiusKm });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 초기 진입 시 기본 반경만 동기화
+  }, []);
+
+  useEffect(() => {
+    if (!autoCallEnabled) {
+      setCallProgress(0);
+      return;
+    }
+    setCallProgress(0);
+    const id = setInterval(() => {
+      setCallProgress((p) => (p >= 5 ? 5 : p + 1));
+    }, 700);
+    return () => clearInterval(id);
+  }, [autoCallEnabled]);
+
+  // 필터링된 목록
+  const filteredHospitals = useMemo(() => {
+    let list = [...hospitals];
+    
+    if (filters.onlyAvailable) {
+      list = list.filter(h => h.status !== 'FULL');
+    }
+    
+    if (filters.maxDistance < 30) {
+      list = list.filter(h => (h.distanceKm || 0) <= filters.maxDistance);
+    }
+
+    return list;
+  }, [hospitals, filters]);
+
+  // 새로고침
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await searchHospitals();
+    setRefreshing(false);
+  };
+
+  const handleHospitalPress = (hospital: Hospital) => {
+    setSelectedHospital(hospital);
+    setIsDetailVisible(true);
+  };
+
+  const handleNaviPress = (hospital: Hospital) => {
+    setTargetHospital(hospital);
+    setIsNaviVisible(true);
+  };
+
+  const renderHospitalItem = ({ item: hospital, index }: { item: Hospital; index: number }) => {
+    const isBusy = hospital.status === 'BUSY';
+    const isFull = hospital.status === 'FULL';
+    
+    let statusLabel = '진료가능';
+    let statusBg = '#EBFBEE';
+    let statusColor = '#2B8A3E';
+
+    if (isBusy) {
+      statusLabel = '혼잡';
+      statusBg = '#FFF4E6';
+      statusColor = '#D9480F';
+    } else if (isFull) {
+      statusLabel = '불가';
+      statusBg = '#FFF5F5';
+      statusColor = '#C92A2A';
+    }
+
+    const bedPercent = hospital.totalBeds > 0 
+      ? (hospital.availableBeds / hospital.totalBeds) * 100 
+      : 0;
+
+    const trafficDot = isFull ? '🔴' : isBusy ? '🟠' : '🟢';
+    const verifyPhase = (index + callProgress) % 3;
+    const phoneVerifyLabel = autoCallEnabled
+      ? verifyPhase === 0
+        ? '✅ 확인'
+        : verifyPhase === 1
+          ? '📞확인 중...'
+          : '❌확인실패'
+      : '';
 
     return (
-      <View style={styles.radialWrapper}>
-        <Svg height={size} width={size}>
-          <Circle
-            stroke={Colors.border}
-            fill="transparent"
-            strokeWidth={strokeWidth}
-            r={radius}
-            cx={size / 2}
-            cy={size / 2}
-            opacity={0.3}
-          />
-          <Circle
-            stroke={color}
-            fill="transparent"
-            strokeWidth={strokeWidth}
-            strokeDasharray={circumference + ' ' + circumference}
-            style={{ strokeDashoffset }}
-            strokeLinecap="round"
-            r={radius}
-            cx={size / 2}
-            cy={size / 2}
-            transform={`rotate(-90 ${size / 2} ${size / 2})`}
-          />
-        </Svg>
-        <View style={styles.radialLabel}>
-          <Text style={[styles.radialText, { color }]}>{percent}%</Text>
-        </View>
-      </View>
-    );
-  };
-
-  // 전화 걸기
-  const handleCall = (phone: string) => {
-    if (phone) {
-      Linking.openURL(`tel:${phone}`).catch(() =>
-        Alert.alert('오류', '전화를 걸 수 없습니다.')
-      );
-    }
-  };
-
-  // 길안내 (웹에서는 카카오맵 웹으로 연결)
-  const handleNavigation = (hospital: Hospital) => {
-    openNavigation('kakao', hospital.name, hospital.lat, hospital.lng, hospital.address);
-  };
-
-  // 반경 변경 시 재검색
-  const handleRadiusChange = (radius: number) => {
-    setSearchRadius(radius);
-    searchHospitals();
-  };
-
-  return (
-    <ScrollView style={styles.container}>
-      {/* 검색 컨트롤 */}
-      <View style={styles.controls}>
-        {hospitals?.length > 0 && (
-          <>
-            <View style={styles.sliderLabelRow}>
-              <Ionicons name="search" size={16} color={Colors.primary} />
-              <Text style={styles.sliderLabel}> 검색 반경: <Text style={styles.sliderValue}>{searchRadius}km</Text></Text>
-            </View>
-            <View style={styles.sliderContainer}>
-              <Text style={styles.sliderLimit}>5km</Text>
-              <View 
-                ref={trackRef}
-                style={styles.sliderTrack}
-                onLayout={() => {
-                  trackRef.current?.measure((x, y, w, h, px, py) => {
-                    sliderWidthRef.current = w;
-                    sliderPageXRef.current = px;
-                  });
-                }}
-                hitSlop={{ top: 20, bottom: 20, left: 10, right: 10 }}
-                onStartShouldSetResponder={() => true}
-                onMoveShouldSetResponder={() => true}
-                onResponderGrant={(e) => {
-                  const { pageX } = e.nativeEvent;
-                  const relativeX = pageX - sliderPageXRef.current;
-                  const width = sliderWidthRef.current || 200;
-                  const clampedX = Math.max(0, Math.min(width, relativeX));
-                  const newRadius = (clampedX / width) * 95 + 5;
-                  const snapped = Math.max(5, Math.min(100, Math.round(newRadius / 5) * 5));
-                  setSearchRadius(snapped);
-                }}
-                onResponderMove={(e) => {
-                  const { pageX } = e.nativeEvent;
-                  const relativeX = pageX - sliderPageXRef.current;
-                  const width = sliderWidthRef.current || 200;
-                  const clampedX = Math.max(0, Math.min(width, relativeX));
-                  const newRadius = (clampedX / width) * 95 + 5;
-                  const snapped = Math.max(5, Math.min(100, Math.round(newRadius / 5) * 5));
-                  
-                  if (snapped !== searchRadius) {
-                    setSearchRadius(snapped);
-                  }
-                }}
-                onResponderRelease={() => searchHospitals()}
-              >
-                <View 
-                  pointerEvents="none"
-                  style={[
-                    styles.sliderFill, 
-                    { width: `${Math.max(0, Math.min(100, ((searchRadius - 5) / 95) * 100))}%` }
-                  ]} 
-                />
-                <View 
-                  pointerEvents="none"
-                  style={[
-                    styles.sliderThumb,
-                    { left: `${Math.max(0, Math.min(100, ((searchRadius - 5) / 95) * 100))}%` }
-                  ]}
-                />
-              </View>
-              <Text style={styles.sliderLimit}>100km</Text>
-            </View>
-          </>
-        )}
-        
-        {/* 모드 전환 */}
-        <View style={styles.modeToggleContainer}>
-          <View style={styles.modeToggle}>
-            <TouchableOpacity style={styles.modeTab} onPress={() => router.replace('/(main)/search/map')}>
-              <Ionicons name="map-outline" size={18} color={Colors.divider} style={{ marginRight: 4 }} />
-              <Text style={styles.modeTabText}>지도</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.modeTab, styles.modeTabActive]}>
-              <Ionicons name="list" size={18} color={Colors.primary} style={{ marginRight: 4 }} />
-              <Text style={[styles.modeTabText, styles.modeTabTextActive]}>리스트</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-
-      {/* 자동전화 토글 */}
-      <TouchableOpacity
-        style={[styles.autoCallBar, autoCallEnabled && styles.autoCallBarActive]}
-        onPress={() => setAutoCallEnabled(!autoCallEnabled)}
+      <TouchableOpacity 
+        style={[styles.hospitalCard, isFull && styles.hospitalCardFull]} 
+        onPress={() => handleHospitalPress(hospital)}
+        activeOpacity={0.7}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Ionicons name="call" size={16} color={autoCallEnabled ? Colors.available : '#451A03'} style={{ marginRight: 6 }} />
-          <Text style={styles.autoCallText}>
-            {autoCallEnabled ? '자동전화 확인 ON' : '자동전화 확인'}
-          </Text>
-        </View>
-        <View style={[styles.toggle, autoCallEnabled && styles.toggleOn]}>
-          <View style={[styles.toggleThumb, autoCallEnabled && styles.toggleThumbOn]} />
-        </View>
-      </TouchableOpacity>
-
-      {/* 로딩 */}
-      {isSearching && (
-        <View style={styles.loadingArea}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>응급실 정보를 검색하고 있습니다...</Text>
-        </View>
-      )}
-
-      {/* 에러 */}
-      {searchError && (
-        <View style={styles.errorArea}>
-          <Text style={styles.errorText}>⚠️ {searchError}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={searchHospitals}>
-            <Text style={styles.retryBtnText}>다시 시도</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* 중증도 가이드 (KTAS) */}
-      {!isSearching && severityScore && (
-        <View style={styles.triageBanner}>
-          <View style={[styles.triageBadge, { backgroundColor: severityScore <= 2 ? Colors.full : Colors.available }]}>
-            <Text style={styles.triageBadgeText}>KTAS Level {severityScore}</Text>
-          </View>
-          <Text style={styles.triageMsg}>{getKTASMessage(severityScore)}</Text>
-        </View>
-      )}
-
-      {/* 결과 수 */}
-      {!isSearching && hospitals?.length > 0 && (
-        <Text style={styles.resultCount}>
-          🚑 주변 응급실 {hospitals.length}곳이 발견되었습니다.
-        </Text>
-      )}
-
-      {/* 빈 결과 */}
-      {!isSearching && !searchError && hospitals?.length === 0 && (
-        <View style={styles.emptyArea}>
-          <View style={styles.emptyIconCircle}>
-            <Ionicons name="medkit-outline" size={60} color={Colors.divider} />
-          </View>
-          <Text style={styles.emptyTitle}>검색 결과가 없습니다</Text>
-          <Text style={styles.emptySubtext}>주변에 가용한 응급실이 없거나{"\n"}검색 반경이 너무 좁을 수 있습니다.</Text>
-          
-          <View style={[styles.controls, { width: '100%', marginTop: 20 }]}>
-            <Text style={styles.sliderLabel}>🔍 반경 넓혀보기: <Text style={styles.sliderValue}>{searchRadius}km</Text></Text>
-            <View style={styles.sliderContainer}>
-              <Text style={styles.sliderLimit}>5km</Text>
-              <View 
-                style={styles.sliderTrack}
-                onLayout={(e) => {
-                  sliderWidthEmptyRef.current = e.nativeEvent.layout.width;
-                }}
-                hitSlop={{ top: 20, bottom: 20, left: 10, right: 10 }}
-                onStartShouldSetResponder={() => true}
-                onMoveShouldSetResponder={() => true}
-                onResponderMove={(e) => {
-                  const { locationX } = e.nativeEvent;
-                  const width = sliderWidthEmptyRef.current || 240;
-                  const newRadius = Math.round((locationX / width) * 95 + 5);
-                  const clamped = Math.max(5, Math.min(100, Math.round(newRadius / 5) * 5));
-                  if (clamped !== searchRadius) setSearchRadius(clamped);
-                }}
-                onResponderRelease={() => searchHospitals()}
-              >
-                <View pointerEvents="none" style={[styles.sliderFill, { width: `${Math.max(0, Math.min(100, ((searchRadius - 5) / 95) * 100))}%` }]} />
-                <View pointerEvents="none" style={[styles.sliderThumb, { left: `${Math.max(0, Math.min(100, ((searchRadius - 5) / 95) * 100))}%` }]} />
+        <View style={styles.cardHeader}>
+          <View style={styles.nameRow}>
+            <Text style={styles.trafficDot}>{trafficDot}</Text>
+            <Text style={styles.hospitalName} numberOfLines={1}>{hospital.name}</Text>
+            {autoCallEnabled ? (
+              <Text style={styles.phoneVerifyBadge} numberOfLines={1}>
+                {phoneVerifyLabel}
+              </Text>
+            ) : (
+              <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>
+                <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
               </View>
-              <Text style={styles.sliderLimit}>100km</Text>
-            </View>
+            )}
           </View>
+          <Text style={styles.hospitalAddr} numberOfLines={1}>{hospital.address}</Text>
         </View>
-      )}
 
-      {/* 병원 카드 목록 */}
-      {hospitals?.map((hospital) => {
-        const config = STATUS_CONFIG[hospital.status];
-        const isFull = hospital.status === 'FULL';
-        const occupancyRate = Math.round((hospital.availableBeds / Math.max(hospital.totalBeds, 1)) * 100);
-
-        // 상태별 배경색 설정 (USER 요청 반영)
-        const getBgColor = () => {
-          if (hospital.status === 'AVAILABLE') return '#F0FDF4'; // 연한 초록
-          if (hospital.status === 'BUSY') return '#FFFBEB';      // 연한 노랑
-          return '#FEF2F2';                                      // 연한 빨강
-        };
-
-        return (
-          <TouchableOpacity 
-            key={hospital.id} 
-            style={[styles.glassCard, { backgroundColor: getBgColor() }, isFull && { opacity: 0.8 }]}
-            activeOpacity={0.8}
-          >
-            <View style={styles.cardMain}>
-              {/* 왼쪽: 원형 그래프 */}
-              <RadialChart percent={occupancyRate} color={config.color} />
-              
-              {/* 중간: 서술 정보 */}
-              <View style={styles.cardBody}>
-                <View style={styles.cardHeader}>
-                  <Text style={styles.hospitalName} numberOfLines={1}>{hospital.name}</Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Text style={styles.distanceText}>{hospital.distanceKm ?? '?'}km</Text>
-                  <View style={styles.dot} />
-                  <Text style={styles.etaText}>{hospital.etaMin ?? '?'}분 소요</Text>
-                </View>
-                <Text style={styles.updateText}>
-                  업데이트: {String(hospital.lastUpdated || '').includes(' ') 
-                    ? String(hospital.lastUpdated).split(' ')[1] 
-                    : (hospital.lastUpdated || '최근')}
+        <View style={styles.cardBody}>
+          <View style={styles.infoRow}>
+            <View style={styles.mainInfo}>
+              <View style={styles.infoRowSecondary}>
+                <Text style={styles.distanceTag}>{hospital.distanceKm ?? '?'}km</Text>
+                <View style={styles.dot} />
+                <Text style={styles.etaText}>
+                  차량 {hospital.etaMin ?? '?'}분
+                  {hospital.routeSource === 'naver_traffic' ? ' · 교통 반영' : ' · 추정'}
                 </Text>
               </View>
 
-              {/* 오른쪽: 상태 배지 */}
-              <View style={[styles.statusBadge, { backgroundColor: config.badgeBg }]}>
-                <Text style={[styles.statusBadgeText, { color: config.color }]}>{config.label}</Text>
+              <View style={styles.bedInfoRow}>
+                <Ionicons name="bed-outline" size={16} color={Colors.textSecondary} />
+                <Text style={styles.bedLabel}>가용 병상</Text>
+                <Text style={styles.bedCount}>
+                  <Text style={styles.bedAvailable}>{hospital.availableBeds}</Text>
+                  <Text style={styles.bedTotal}> / {hospital.totalBeds}</Text>
+                </Text>
               </View>
             </View>
 
-            {/* 중증 질환 수용 불가 경고 및 실시간 메시지 */}
-            <View style={styles.alertContent}>
-              {(() => {
-                // 사용자가 선택한 증상 중 해당 병원에서 진료 불가한 항목 추출
-                const unavailableSymptoms = SYMPTOM_OPTIONS.filter(opt => 
-                  selectedSymptoms.includes(opt.key) && 
-                  opt.seriousDiseaseCodes?.some(code => hospital.seriousStatus?.[code.toLowerCase()] === 'N')
-                );
+            <BedAvailabilityRing percent={bedPercent} status={hospital.status} />
+          </View>
 
-                if (unavailableSymptoms.length > 0) {
-                  return (
-                    <View style={styles.seriousWarning}>
-                      <Ionicons name="warning" size={14} color={Colors.full} style={{ marginRight: 4 }} />
-                      <Text style={styles.seriousWarningText}>
-                        현재 {unavailableSymptoms.map(s => s.label).join(', ')} 진료 불가
-                      </Text>
-                    </View>
-                  );
-                }
-                return null;
-              })()}
+          {hospital.phone ? (
+            <Text style={styles.phoneLine} numberOfLines={1}>
+              📞 {hospital.phone}
+            </Text>
+          ) : null}
 
-              {hospital.realtimeMsg && (
-                <View style={styles.realtimeMsgBox}>
-                  <Text style={styles.realtimeMsgText} numberOfLines={2}>
-                    💬 {hospital.realtimeMsg}
-                  </Text>
+          {hospital.seriousDiseases && hospital.seriousDiseases.length > 0 && (
+            <View style={styles.diseaseTagContainer}>
+              {hospital.seriousDiseases.slice(0, 3).map((d, idx) => (
+                <View key={idx} style={styles.diseaseTag}>
+                  <Text style={styles.diseaseTagText}>{d}</Text>
                 </View>
+              ))}
+              {hospital.seriousDiseases.length > 3 && (
+                <Text style={styles.moreText}>+{hospital.seriousDiseases.length - 3}</Text>
               )}
             </View>
+          )}
+        </View>
 
-            {/* 하단 액션바 */}
-            <View style={styles.cardActions}>
-              <TouchableOpacity style={styles.actionItem} onPress={() => handleCall(hospital.phone)}>
-                <Ionicons name="call-outline" size={16} color={Colors.textSecondary} style={{ marginRight: 6 }} />
-                <Text style={styles.actionText}>전화하기</Text>
+        <View style={styles.cardFooter}>
+          <TouchableOpacity 
+            style={styles.actionBtn}
+            onPress={() => handleNaviPress(hospital)}
+          >
+            <Ionicons name="navigate-circle" size={20} color={Colors.primary} />
+            <Text style={styles.actionBtnText}>길안내</Text>
+          </TouchableOpacity>
+          <View style={styles.vDivider} />
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => {
+              if (!hospital.phone) {
+                Alert.alert('알림', '등록된 응급실 전화번호가 없습니다.');
+                return;
+              }
+              const tel = hospital.phone.replace(/[^0-9+]/g, '');
+              Alert.alert('전화 연결', `${hospital.name}으로 연결할까요?`, [
+                { text: '취소', style: 'cancel' },
+                { text: '통화', onPress: () => void Linking.openURL(`tel:${tel}`) },
+              ]);
+            }}
+          >
+            <Ionicons name="call" size={18} color={Colors.textSecondary} />
+            <Text style={[styles.actionBtnText, { color: Colors.textSecondary }]}>전화문의</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  return (
+    <View style={styles.container}>
+      <NavigationHeader 
+        title="응급실 검색" 
+        showBack 
+        rightElement={
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <TouchableOpacity onPress={onRefresh} style={styles.headerIcon}>
+              <Ionicons name="refresh" size={22} color={Colors.text} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => Alert.alert('필터', '추가 필터는 추후 연동됩니다.')} style={styles.headerIcon}>
+              <Ionicons name="menu-outline" size={24} color={Colors.text} />
+            </TouchableOpacity>
+          </View>
+        }
+      />
+
+      <View style={styles.filterSection}>
+        <View style={styles.toolbarRow}>
+          <TouchableOpacity style={styles.radiusChip} onPress={() => setRadiusModalVisible(true)} activeOpacity={0.85}>
+            <Text style={styles.radiusChipText}>{filters.maxDistance}km ▼</Text>
+          </TouchableOpacity>
+          <View style={styles.modeToggleContainer}>
+            <TouchableOpacity style={[styles.modeBtn, styles.modeBtnActive]}>
+              <Ionicons name="list" size={18} color="#fff" />
+              <Text style={styles.modeBtnTextActive}>리스트</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.modeBtn} onPress={() => router.push('/(main)/search/map')}>
+              <Ionicons name="map-outline" size={18} color={Colors.textSecondary} />
+              <Text style={styles.modeBtnText}>지도</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.autoCallRow}>
+          <Text style={styles.autoCallLabel}>자동전화확인</Text>
+          <Switch
+            value={autoCallEnabled}
+            onValueChange={setAutoCallEnabled}
+            trackColor={{ true: Colors.available, false: '#D1D5DB' }}
+            thumbColor="#fff"
+          />
+        </View>
+        {autoCallEnabled ? (
+          <Text style={styles.autoCallStatus}>
+            📞 확인 중... ({Math.min(callProgress, 5)}/5)
+          </Text>
+        ) : null}
+        {searchError ? (
+          <View style={styles.errorBanner}>
+            <Ionicons name="alert-circle" size={18} color="#B91C1C" />
+            <Text style={styles.errorText}>{searchError}</Text>
+          </View>
+        ) : null}
+        {appConfig.showDevHud ? (
+          <View style={styles.devHud}>
+            <Text style={styles.devHudText}>DEV</Text>
+          </View>
+        ) : null}
+
+        <View style={styles.statsBar}>
+          <Text style={styles.resultCount}>
+            검색 결과 <Text style={styles.bold}>{filteredHospitals.length}</Text>건
+          </Text>
+          <Text style={styles.updateTime}>{lastUpdated ? `${lastUpdated} 갱신` : ''}</Text>
+        </View>
+        
+      </View>
+
+      <Modal visible={radiusModalVisible} transparent animationType="fade" onRequestClose={() => setRadiusModalVisible(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setRadiusModalVisible(false)}>
+          <Pressable style={styles.radiusModal} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.radiusModalTitle}>검색 반경</Text>
+            {([5, 10, 20] as const).map((km) => (
+              <TouchableOpacity
+                key={km}
+                style={[styles.radiusOption, filters.maxDistance === km && styles.radiusOptionActive]}
+                onPress={() => {
+                  setFilters({ maxDistance: km });
+                  setRadiusModalVisible(false);
+                }}
+              >
+                <Text style={[styles.radiusOptionText, filters.maxDistance === km && styles.radiusOptionTextActive]}>{km}km</Text>
               </TouchableOpacity>
-              <View style={styles.vDivider} />
-              <TouchableOpacity style={styles.actionItem} onPress={() => handleNavigation(hospital)}>
-                <Ionicons name="navigate-outline" size={16} color={Colors.textSecondary} style={{ marginRight: 6 }} />
-                <Text style={styles.actionText}>길 안내</Text>
+            ))}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <FlatList
+        data={filteredHospitals}
+        keyExtractor={(item) => item.id}
+        renderItem={renderHospitalItem}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        ListEmptyComponent={
+          !isLoading ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="search-outline" size={60} color="#E9ECEF" />
+              <Text style={styles.emptyText}>조건에 맞는 응급실이 없습니다.</Text>
+              <TouchableOpacity style={styles.resetBtn} onPress={() => setFilters({ onlyAvailable: false, maxDistance: 10 })}>
+                <Text style={styles.resetBtnText}>필터 초기화</Text>
               </TouchableOpacity>
             </View>
-          </TouchableOpacity>
-        );
-      })}
-    </ScrollView>
+          ) : null
+        }
+      />
+
+      {isLoading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>실시간 병상 정보를 확인 중입니다...</Text>
+        </View>
+      )}
+
+      {/* 정보 상세 모달 */}
+      {selectedHospital && (
+        <HospitalDetailModal
+          isVisible={isDetailVisible}
+          onClose={() => setIsDetailVisible(false)}
+          hospital={selectedHospital}
+          onNavigate={() => {
+            setIsDetailVisible(false);
+            handleNaviPress(selectedHospital);
+          }}
+        />
+      )}
+
+      {/* 내비 선택 모달 */}
+      {targetHospital && (
+        <NaviSelectionModal
+          isVisible={isNaviVisible}
+          onClose={() => setIsNaviVisible(false)}
+          hospitalName={targetHospital.name}
+          lat={targetHospital.lat}
+          lng={targetHospital.lng}
+          address={targetHospital.address}
+        />
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8F9FA' },
-  controls: {
-    padding: Spacing.lg, backgroundColor: '#fff',
-    borderBottomWidth: 1, borderBottomColor: '#eee',
+  headerIcon: { padding: 4 },
+  filterSection: {
+    paddingHorizontal: 20,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F3F5',
   },
-  radiusRow: { flexDirection: 'row', gap: 8, marginBottom: Spacing.md },
-  radiusBtn: {
-    paddingVertical: 6, paddingHorizontal: 14,
-    borderRadius: BorderRadius.pill, borderWidth: 1.5, borderColor: '#eee',
+  toolbarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingTop: 4,
+    paddingBottom: 8,
   },
-  radiusBtnActive: { borderColor: Colors.primary, backgroundColor: '#FFF5F2' },
-  radiusBtnText: { fontSize: FontSize.sm, color: Colors.textSecondary, fontWeight: '500' },
-  radiusBtnTextActive: { color: Colors.primary, fontWeight: '700' },
-  modeToggleContainer: { marginTop: 16 },
-  modeToggle: { flexDirection: 'row', backgroundColor: '#F1F3F5', borderRadius: 12, padding: 4 },
-  modeTab: { 
-    flex: 1, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', 
-    borderRadius: 10, flexDirection: 'row' 
+  radiusChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: '#F1F3F5',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
   },
-  modeTabActive: { backgroundColor: '#fff', elevation: 2, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4 },
-  modeTabText: { fontSize: FontSize.sm, fontWeight: '600', color: '#868E96' },
-  modeTabTextActive: { color: Colors.primary },
-  // 슬라이더 스타일
-  sliderLabelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  sliderLabel: { fontSize: 13, fontWeight: '700', color: '#444' },
-  sliderValue: { color: Colors.primary, fontSize: 16 },
-  sliderContainer: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  sliderLimit: { fontSize: 11, color: '#999', fontWeight: '600' },
-  sliderTrack: { flex: 1, height: 6, backgroundColor: '#E9ECEF', borderRadius: 3, position: 'relative' },
-  sliderFill: { position: 'absolute', height: '100%', backgroundColor: Colors.primary, borderRadius: 3 },
-  sliderThumb: { 
-    position: 'absolute', width: 20, height: 20, borderRadius: 10, 
-    backgroundColor: '#fff', borderWidth: 3, borderColor: Colors.primary,
-    top: -7, marginLeft: -10, elevation: 3, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 3,
+  radiusChipText: { fontSize: 14, fontWeight: '800', color: Colors.text },
+  autoCallRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+    marginBottom: 4,
   },
-  // 자동전화
-  autoCallBar: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    padding: Spacing.md, paddingHorizontal: Spacing.lg,
-    backgroundColor: '#FFFBEB', borderBottomWidth: 1, borderBottomColor: '#FEF3C7',
+  autoCallLabel: { fontSize: 14, fontWeight: '700', color: Colors.text },
+  autoCallStatus: { fontSize: 12, fontWeight: '600', color: Colors.secondary, marginBottom: 8 },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    padding: 24,
   },
-  autoCallBarActive: { backgroundColor: '#F0FDF4', borderBottomColor: '#DCFCE7' },
-  autoCallText: { fontSize: FontSize.sm, fontWeight: '600', color: '#451A03' },
-  toggle: {
-    width: 44, height: 24, borderRadius: 12, backgroundColor: '#E5E7EB',
-    justifyContent: 'center', padding: 2,
+  radiusModal: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    gap: 8,
   },
-  toggleOn: { backgroundColor: Colors.available },
-  toggleThumb: {
-    width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff',
+  radiusModalTitle: { fontSize: 16, fontWeight: '800', color: Colors.text, marginBottom: 8 },
+  radiusOption: {
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: '#F8F9FA',
   },
-  toggleThumbOn: { alignSelf: 'flex-end' },
-  // 중증도 배너
-  triageBanner: {
-    margin: Spacing.lg, padding: 16, backgroundColor: '#fff',
-    borderRadius: BorderRadius.lg, borderLeftWidth: 5, borderLeftColor: Colors.primary,
-    elevation: 3, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 10,
+  radiusOptionActive: { backgroundColor: '#FFF1F0', borderWidth: 1, borderColor: Colors.primary },
+  radiusOptionText: { fontSize: 16, fontWeight: '600', color: Colors.text },
+  radiusOptionTextActive: { color: Colors.primary, fontWeight: '800' },
+  statsBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
   },
-  triageBadge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, marginBottom: 8 },
-  triageBadgeText: { color: '#fff', fontSize: 12, fontWeight: '800' },
-  triageMsg: { fontSize: FontSize.md, color: Colors.text, fontWeight: '600', lineHeight: 22 },
-  // 카드 (Glassmorphism 컨셉 + 상태별 색상 반영)
-  glassCard: {
-    marginHorizontal: Spacing.lg, marginTop: Spacing.md,
-    borderRadius: BorderRadius.xl, 
-    borderWidth: 1, borderColor: 'rgba(0, 0, 0, 0.05)',
-    elevation: 3, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10,
-    overflow: 'hidden',
+  resultCount: { fontSize: 13, color: Colors.textSecondary },
+  bold: { fontWeight: '700', color: Colors.text },
+  updateTime: { fontSize: 11, color: Colors.textLight },
+
+  modeToggleContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: '#F1F3F5',
+    borderRadius: 12,
+    padding: 4,
   },
-  cardMain: { flexDirection: 'row', padding: 16, alignItems: 'center' },
-  radialWrapper: { width: 66, height: 66, justifyContent: 'center', alignItems: 'center' },
-  radialLabel: { 
-    position: 'absolute', 
-    width: '100%', 
-    height: '100%', 
-    alignItems: 'center', 
-    justifyContent: 'center' 
+  modeBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderRadius: 10,
+    gap: 6,
   },
-  radialText: { fontSize: 11, fontWeight: '800' },
-  cardBody: { flex: 1, marginLeft: 16 },
-  hospitalName: { fontSize: FontSize.md, fontWeight: '800', color: Colors.text, marginBottom: 4 },
+  modeBtnActive: {
+    backgroundColor: Colors.primary,
+    ...Platform.select({
+      ios: { shadowColor: Colors.primary, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4 },
+      android: { elevation: 3 },
+    }),
+  },
+  modeBtnText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
+  modeBtnTextActive: { fontSize: 14, fontWeight: '700', color: '#fff' },
+
+  listContent: { padding: 20, paddingBottom: 40 },
+  hospitalCard: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 16,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8 },
+      android: { elevation: 2 },
+    }),
+    borderWidth: 1,
+    borderColor: '#F1F3F5',
+  },
+  hospitalCardFull: {
+    backgroundColor: '#FCFCFC',
+    opacity: 0.9,
+  },
+  cardHeader: { marginBottom: 12 },
+  nameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, gap: 6 },
+  trafficDot: { fontSize: 14, lineHeight: 20 },
+  hospitalName: { fontSize: 17, fontWeight: '800', color: Colors.text, flex: 1, marginRight: 4 },
+  phoneVerifyBadge: { fontSize: 11, fontWeight: '700', color: Colors.textSecondary, maxWidth: '38%' },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  statusText: { fontSize: 12, fontWeight: '800' },
+  hospitalAddr: { fontSize: 13, color: Colors.textLight, fontWeight: '500' },
+  phoneLine: { fontSize: 13, color: Colors.textSecondary, fontWeight: '600', marginTop: 8 },
+
+  cardBody: { marginBottom: 16 },
   infoRow: { flexDirection: 'row', alignItems: 'center' },
-  distanceText: { fontSize: FontSize.md, fontWeight: '700', color: Colors.primary },
-  etaText: { fontSize: FontSize.sm, color: Colors.textSecondary },
-  dot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#ADB5BD', marginHorizontal: 8 },
-  updateText: { fontSize: 11, color: '#ADB5BD', marginTop: 4 },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },
-  statusBadgeText: { fontSize: 12, fontWeight: '800' },
-  // 카드 액션
-  cardActions: { 
-    flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#F1F3F5',
-    backgroundColor: 'rgba(248, 249, 250, 0.5)',
+  mainInfo: { flex: 1 },
+  infoRowSecondary: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  distanceTag: { fontSize: 14, fontWeight: '800', color: Colors.primary },
+  etaText: { fontSize: 13, color: Colors.textSecondary, fontWeight: '600' },
+  dot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#D1D5DB', marginHorizontal: 8 },
+
+  bedInfoRow: { flexDirection: 'row', alignItems: 'center' },
+  bedLabel: { fontSize: 13, color: Colors.textSecondary, marginLeft: 6, marginRight: 8 },
+  bedCount: { flexDirection: 'row', alignItems: 'baseline' },
+  bedAvailable: { fontSize: 16, fontWeight: '800', color: Colors.text },
+  bedTotal: { fontSize: 12, color: Colors.textLight },
+
+  chartContainer: { marginLeft: 12, width: 52, height: 52, justifyContent: 'center', alignItems: 'center' },
+  chartLabelWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  actionItem: { flex: 1, flexDirection: 'row', paddingVertical: 12, justifyContent: 'center', alignItems: 'center' },
-  actionIcon: { marginRight: 6, fontSize: 14 },
-  actionText: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.textSecondary },
-  vDivider: { width: 1, backgroundColor: '#F1F3F5' },
-  // 중증 질환 경고 및 실시간 메시지
-  alertContent: { paddingHorizontal: 16, paddingBottom: 12 },
-  seriousWarning: { 
-    flexDirection: 'row', alignItems: 'center', 
-    backgroundColor: '#FFF1F2', padding: 8, borderRadius: 8,
-    marginBottom: 8, borderWidth: 1, borderColor: '#FECACA'
+  chartPercent: { fontSize: 11, fontWeight: '800' },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FEF2F2',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 8,
   },
-  seriousWarningText: { color: Colors.full, fontSize: 13, fontWeight: '800' },
-  realtimeMsgBox: { 
-    backgroundColor: '#F3F4F6', padding: 8, borderRadius: 8,
-    borderLeftWidth: 3, borderLeftColor: '#9CA3AF'
+  errorText: { flex: 1, fontSize: 13, color: '#991B1B', fontWeight: '600' },
+  devHud: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginBottom: 8,
   },
-  realtimeMsgText: { color: '#4B5563', fontSize: 12, fontWeight: '600', lineHeight: 18 },
-  // 기타
-  loadingArea: { alignItems: 'center', paddingVertical: 80 },
-  loadingText: { fontSize: FontSize.md, color: Colors.textSecondary, marginTop: 12, fontWeight: '600' },
-  resultCount: { paddingHorizontal: Spacing.xl, paddingTop: 8, fontSize: FontSize.sm, color: Colors.textSecondary, fontWeight: '600' },
-  errorArea: { alignItems: 'center', paddingVertical: 40 },
-  errorText: { fontSize: FontSize.md, color: Colors.full, marginBottom: 16 },
-  retryBtn: { backgroundColor: Colors.primary, borderRadius: BorderRadius.md, paddingHorizontal: 24, paddingVertical: 12 },
-  retryBtnText: { color: '#fff', fontWeight: '700' },
-  emptyArea: { alignItems: 'center', paddingVertical: 100, paddingHorizontal: 40 },
-  emptyIconCircle: {
-    width: 100, height: 100, borderRadius: 50,
-    backgroundColor: '#F1F3F5', alignItems: 'center', justifyContent: 'center',
-    marginBottom: 24,
+  devHudText: { fontSize: 10, fontWeight: '800', color: '#4338CA', letterSpacing: 0.5 },
+
+  diseaseTagContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 },
+  diseaseTag: { 
+    backgroundColor: '#F8F9FA', 
+    paddingHorizontal: 8, 
+    paddingVertical: 4, 
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E9ECEF'
   },
-  emptyTitle: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.text, marginBottom: 8 },
-  emptySubtext: { fontSize: FontSize.md, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22, marginBottom: 24 },
+  diseaseTagText: { fontSize: 11, color: Colors.textSecondary, fontWeight: '600' },
+  moreText: { fontSize: 11, color: Colors.textLight, alignSelf: 'center' },
+
+  cardFooter: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: '#F1F3F5',
+    paddingTop: 12,
+  },
+  actionBtn: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 },
+  actionBtnText: { fontSize: 14, fontWeight: '700', color: Colors.primary },
+  vDivider: { width: 1, height: 20, backgroundColor: '#F1F3F5' },
+
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: { marginTop: 16, color: Colors.textSecondary, fontWeight: '600' },
+  emptyContainer: { alignItems: 'center', marginTop: 100 },
+  emptyText: { marginTop: 16, fontSize: 15, color: Colors.textLight, fontWeight: '500' },
+  resetBtn: { marginTop: 24, paddingVertical: 10, paddingHorizontal: 20, backgroundColor: '#F1F3F5', borderRadius: 10 },
+  resetBtnText: { fontSize: 14, color: Colors.textSecondary, fontWeight: '700' },
 });

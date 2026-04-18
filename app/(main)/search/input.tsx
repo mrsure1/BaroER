@@ -1,449 +1,495 @@
-// 환자 상태 입력 화면 (S-005) — Phase 3: 위치 자동 감지 + 음성 입력
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
+  StyleSheet,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
   ScrollView,
-  Alert,
-  ActivityIndicator,
-  Modal,
+  KeyboardAvoidingView,
   Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
+  Modal,
+  Alert,
+  Pressable,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-// @react-native-voice/voice는 네이티브 전용이므로 조건부로 가져옵니다.
-const Voice = Platform.OS !== 'web' ? require('@react-native-voice/voice').default : null;
-
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/Colors';
+import { Ionicons } from '@expo/vector-icons';
+import { StatusBar } from 'expo-status-bar';
+import Voice from '@react-native-voice/voice';
+import { Colors } from '@/constants/Colors';
+import NavigationHeader from '@/components/common/NavigationHeader';
+import HeartbeatSearchButton from '@/components/HeartbeatSearchButton';
+import { AGE_GROUP_LABELS, SYMPTOM_OPTIONS } from '@/src/constants/symptoms';
+import { AgeGroup, ConsciousnessLevel, Gender, SymptomCategory } from '@/src/types';
 import { useSearchStore } from '@/src/stores/searchStore';
-import { SYMPTOM_OPTIONS, AGE_GROUP_LABELS, CONSCIOUSNESS_LABELS } from '@/src/constants/symptoms';
-import { AgeGroup, ConsciousnessLevel, Gender } from '@/src/types';
 
-export default function PatientInputScreen() {
+const AGE_ORDER: AgeGroup[] = ['INFANT', 'CHILD', 'ADULT', 'ELDERLY'];
+
+const CONSCIOUSNESS_OPTIONS: { key: ConsciousnessLevel; label: string }[] = [
+  { key: 'ALERT', label: '명료' },
+  { key: 'DROWSY', label: '혼미' },
+  { key: 'UNRESPONSIVE', label: '무반응' },
+];
+
+export default function SearchInputScreen() {
   const router = useRouter();
-  const {
-    selectedSymptoms, toggleSymptom,
-    symptomDetail, setSymptomDetail,
-    patientGender, setPatientGender,
-    patientAgeGroup, setPatientAgeGroup,
-    consciousnessLevel, setConsciousnessLevel,
-    userLocation, locationLoading, fetchLocation,
-    searchHospitals, isSearching,
-  } = useSearchStore();
+  const insets = useSafeAreaInsets();
+  const { setFilters, searchHospitals } = useSearchStore();
 
-  const [voiceModalVisible, setVoiceModalVisible] = useState(false);
-  const [voiceText, setVoiceText] = useState('');
-  const [isListening, setIsListening] = useState(false);
+  const [detailText, setDetailText] = useState('');
+  const [selectedSymptoms, setSelectedSymptoms] = useState<SymptomCategory[]>([]);
+  const [gender, setGender] = useState<Gender>('MALE');
+  const [ageGroup, setAgeGroup] = useState<AgeGroup>('ADULT');
+  const [consciousness, setConsciousness] = useState<ConsciousnessLevel>('ALERT');
+  const [ageModalVisible, setAgeModalVisible] = useState(false);
+  const [voiceListening, setVoiceListening] = useState(false);
 
-  // 화면 진입 시 위치 자동 감지 및 보이스 리스너 설정
+  const handleSymptomToggle = (symptom: SymptomCategory) => {
+    if (selectedSymptoms.includes(symptom)) {
+      setSelectedSymptoms(selectedSymptoms.filter((s) => s !== symptom));
+    } else {
+      setSelectedSymptoms([...selectedSymptoms, symptom]);
+    }
+  };
+
   useEffect(() => {
-    if (!userLocation) {
-      fetchLocation();
-    }
-
-    // 네이티브용 보이스 이벤트 리스너
-    if (Platform.OS !== 'web' && Voice) {
-      Voice.onSpeechResults = (e: any) => {
-        if (e.value && e.value[0]) {
-          const transcript = e.value[0];
-          setVoiceText(transcript);
-          // 실시간으로 텍스트 필드에 바로 입력 (기존 내용 + 인식된 내용)
-          setSymptomDetail((prev: string) => prev ? `${prev} ${transcript}`.trim() : transcript);
-        }
-      };
-      
-      Voice.onSpeechError = (e: any) => {
-        console.error('STT 에러:', e.error);
-        setIsListening(false);
-      };
-
-      Voice.onSpeechEnd = () => setIsListening(false);
-    }
-
-    return () => {
-      if (Platform.OS !== 'web' && Voice && typeof Voice.destroy === 'function') {
-        Voice.destroy().then(() => {
-          if (typeof Voice.removeAllListeners === 'function') {
-            Voice.removeAllListeners();
-          }
-        }).catch(() => {});
+    Voice.onSpeechResults = (e) => {
+      const t = e.value?.[0];
+      if (t) {
+        setDetailText((prev) => (prev ? `${prev} ${t}` : t));
       }
+    };
+    Voice.onSpeechError = () => {
+      setVoiceListening(false);
+    };
+    Voice.onSpeechEnd = () => {
+      setVoiceListening(false);
+    };
+    return () => {
+      void Voice.destroy().then(Voice.removeAllListeners);
     };
   }, []);
 
-  // 음성 입력 시작
-  const startVoiceInput = async () => {
-    setVoiceModalVisible(true);
-    setIsListening(true);
-    setVoiceText('');
-
-    // 웹 환경: Web Speech API 사용
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        const recognition = new SpeechRecognition();
-        recognition.lang = 'ko-KR';
-        recognition.continuous = false;
-        recognition.interimResults = true;
-
-        recognition.onresult = (event: any) => {
-          const transcript = Array.from(event.results)
-            .map((r: any) => r[0].transcript)
-            .join('');
-          setVoiceText(transcript);
-          // 실시간으로 텍스트 필드에 바로 입력 (기존 내용 + 인식된 내용)
-          setSymptomDetail(symptomDetail ? `${symptomDetail} ${transcript}`.trim() : transcript);
-        };
-
-        recognition.onend = () => setIsListening(false);
-        recognition.onerror = () => {
-          setIsListening(false);
-          Alert.alert('음성 인식 오류', '마이크 접근이 거부되었거나 인식할 수 없습니다.');
-        };
-
-        recognition.start();
-        (window as any).__recognition = recognition;
-      } else {
-        setIsListening(false);
-        Alert.alert('미지원', '이 브라우저에서는 음성 인식을 지원하지 않습니다.');
-      }
-    } else {
-      // 네이티브 환경: @react-native-voice/voice 사용
-      if (!Voice) {
-        // Expo Go 또는 모듈 로드 실패 시 가상 입력 시뮬레이션
-        setIsListening(true);
-        setTimeout(() => {
-          const mockText = "심한 두통과 어지러움이 느껴져요. 혈압이 높은 것 같아요.";
-          setVoiceText(mockText);
-          setSymptomDetail((prev: string) => prev ? `${prev} ${mockText}`.trim() : mockText);
-          setIsListening(false);
-          // 팝업으로 안내
-          Alert.alert('STT 시뮬레이션', '현재 Expo Go 환경에서는 실제 음성 인식이 지원되지 않아 테스트용 텍스트를 입력했습니다.\n\n실제 기능을 사용하시려면 앱 빌드가 필요합니다.');
-        }, 1500);
+  const toggleVoice = useCallback(async () => {
+    try {
+      if (voiceListening) {
+        await Voice.stop();
+        setVoiceListening(false);
         return;
       }
-
-      try {
-        await Voice.start('ko-KR');
-      } catch (e) {
-        console.error('음성 인식 시작 실패:', e);
-        Alert.alert('오류', '음성 인식을 시작할 수 없습니다. 권한 설정을 확인해 주세요.');
-        setIsListening(false);
-        setVoiceModalVisible(false);
-      }
+      await Voice.start('ko-KR');
+      setVoiceListening(true);
+    } catch {
+      Alert.alert('음성 입력', '마이크 권한 또는 음성 인식을 사용할 수 없습니다.');
+      setVoiceListening(false);
     }
-  };
+  }, [voiceListening]);
 
-  // 음성 입력 중지
-  const stopVoiceInput = () => {
-    setIsListening(false);
-    if (Platform.OS === 'web' && (window as any).__recognition) {
-      (window as any).__recognition.stop();
-    } else {
-      Voice.stop();
-    }
-  };
-
-  // 음성 결과 적용 (이미 실시간 입력되므로 모달 닫기만 수행)
-  const applyVoiceResult = () => {
-    setVoiceModalVisible(false);
-  };
-
-  // 검색 실행
   const handleSearch = async () => {
-    if (selectedSymptoms.length === 0) {
-      Alert.alert('입력 오류', '하나 이상의 증상을 선택하세요.');
-      return;
-    }
-    if (!patientGender || !patientAgeGroup || !consciousnessLevel) {
-      Alert.alert('입력 오류', '환자 정보를 모두 입력하세요.');
-      return;
-    }
-    // API 검색 실행 후 리스트 화면으로 이동
+    setFilters({
+      query: detailText,
+      symptoms: selectedSymptoms,
+      patientGender: gender,
+      patientAgeGroup: ageGroup,
+      consciousnessLevel: consciousness,
+    });
     await searchHospitals();
     router.push('/(main)/search/list');
   };
 
+  const canSearch = selectedSymptoms.length > 0 || detailText.trim().length > 0;
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* 위치 정보 */}
-      <View style={styles.locationBar}>
-        {locationLoading ? (
-          <View style={styles.locationRow}>
-            <ActivityIndicator size="small" color={Colors.primary} />
-            <Text style={styles.locationText}>위치 확인 중...</Text>
-          </View>
-        ) : userLocation ? (
-          <View style={styles.locationRow}>
-            <Ionicons name="location-sharp" size={16} color={Colors.primary} />
-            <Text style={styles.locationText}>{userLocation.address || '현재 위치 확인됨'}</Text>
-          </View>
-        ) : (
-          <TouchableOpacity style={styles.locationRow} onPress={fetchLocation}>
-            <Ionicons name="location-outline" size={16} color={Colors.primary} />
-            <Text style={[styles.locationText, { color: Colors.primary }]}>위치 권한 허용하기</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+    >
+      <StatusBar style="light" />
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.inner}>
+          <NavigationHeader title="환자 상태 입력" showBack variant="primary" />
 
-      {/* 증상 선택 */}
-      <Text style={styles.sectionTitle}>증상 선택 (복수 가능)</Text>
-      <View style={styles.chipGrid}>
-        {SYMPTOM_OPTIONS.map((opt) => {
-          const isSelected = selectedSymptoms.includes(opt.key);
-          return (
-            <TouchableOpacity
-              key={opt.key}
-              style={[styles.chip, isSelected && styles.chipSelected]}
-              onPress={() => toggleSymptom(opt.key)}
-            >
-              <Ionicons 
-                name={opt.iconName} 
-                size={18} 
-                color={isSelected ? Colors.primary : Colors.divider} 
-                style={{ marginRight: 6 }} 
-              />
-              <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-                {opt.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      {/* 상세 증상 + 음성 입력 */}
-      <Text style={styles.sectionTitle}>상세 증상</Text>
-      <View style={styles.detailRow}>
-        <TextInput
-          style={[styles.input, { flex: 1 }]}
-          placeholder="증상을 상세히 입력하세요..."
-          placeholderTextColor={Colors.textLight}
-          value={symptomDetail}
-          onChangeText={setSymptomDetail}
-          multiline
-        />
-        <TouchableOpacity style={styles.micBtn} onPress={startVoiceInput}>
-          <Ionicons name="mic-outline" size={24} color="#fff" />
-        </TouchableOpacity>
-      </View>
-
-      {/* 환자 정보 (성별 + 연령대 통합) */}
-      <View style={styles.divider} />
-      <View style={styles.patientInfoWrapper}>
-        {/* 성별 */}
-        <View style={styles.genderSection}>
-          <Text style={styles.fieldLabel}>성별</Text>
-          <View style={styles.genderRow}>
-            {(['MALE', 'FEMALE'] as Gender[]).map((g) => (
-              <TouchableOpacity key={g} style={styles.genderItem} onPress={() => setPatientGender(g)}>
-                <View style={[styles.radioCircle, patientGender === g && styles.radioChecked]}>
-                  {patientGender === g && <View style={styles.radioDot} />}
-                </View>
-                <Text style={styles.radioLabelSmall}>{g === 'MALE' ? '남성' : '여성'}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* 연령대 */}
-        <View style={styles.ageSection}>
-          <Text style={styles.fieldLabel}>연령대</Text>
-          <View style={styles.ageChipGrid}>
-            {(Object.entries(AGE_GROUP_LABELS) as [AgeGroup, string][]).map(([key, label]) => (
-              <TouchableOpacity
-                key={key}
-                style={[styles.ageChipCompact, patientAgeGroup === key && styles.chipSelected]}
-                onPress={() => setPatientAgeGroup(key)}
-              >
-                <Text style={[styles.ageChipTextSmall, patientAgeGroup === key && styles.chipTextSelected]}>
-                  {label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      </View>
-
-      {/* 의식 상태 */}
-      <View style={{ marginTop: -Spacing.md }}>
-        <Text style={styles.fieldLabel}>의식 상태</Text>
-        <View style={styles.radioRowCompact}>
-          {(Object.entries(CONSCIOUSNESS_LABELS) as [ConsciousnessLevel, string][]).map(([key, label]) => (
-            <TouchableOpacity key={key} style={styles.radioItem} onPress={() => setConsciousnessLevel(key)}>
-              <View style={[styles.radioCircle, consciousnessLevel === key && styles.radioChecked]}>
-                {consciousnessLevel === key && <View style={styles.radioDot} />}
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>증상 선택</Text>
+              <Text style={styles.cardHint}>복수 선택 가능</Text>
+              <View style={styles.symptomGrid}>
+                {SYMPTOM_OPTIONS.map((symptom) => {
+                  const isSelected = selectedSymptoms.includes(symptom.key);
+                  return (
+                    <TouchableOpacity
+                      key={symptom.key}
+                      style={[styles.symptomChip, isSelected && styles.symptomChipSelected]}
+                      onPress={() => handleSymptomToggle(symptom.key)}
+                      activeOpacity={0.88}
+                    >
+                      <View style={[styles.iconRing, isSelected && styles.iconRingOn]}>
+                        <Ionicons
+                          name={symptom.iconName}
+                          size={20}
+                          color={isSelected ? Colors.primary : '#8E8E93'}
+                        />
+                      </View>
+                      <Text style={[styles.symptomLabel, isSelected && styles.symptomLabelSelected]} numberOfLines={1}>
+                        {symptom.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
-              <Text style={styles.radioLabelSmall}>{label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      {/* 검색 버튼 */}
-      <TouchableOpacity
-        style={[styles.searchBtn, isSearching && { opacity: 0.7 }]}
-        onPress={handleSearch}
-        disabled={isSearching}
-      >
-        {isSearching ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <ActivityIndicator color="#fff" />
-            <Text style={styles.searchBtnText}>검색 중...</Text>
-          </View>
-        ) : (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Ionicons name="search" size={20} color="#fff" />
-            <Text style={styles.searchBtnText}>응급실 검색</Text>
-          </View>
-        )}
-      </TouchableOpacity>
-
-      {/* 음성 입력 모달 */}
-      <Modal visible={voiceModalVisible} transparent animationType="fade">
-        <View style={styles.voiceOverlay}>
-          <View style={styles.voiceModal}>
-            <View style={styles.voiceIconCircle}>
-              <Ionicons 
-                name={isListening ? "pulse-outline" : "mic-sharp"} 
-                size={48} 
-                color={isListening ? Colors.full : Colors.primary} 
-              />
             </View>
-            <Text style={styles.voiceTitle}>
-              {isListening ? '듣고 있습니다...' : '음성 인식 완료'}
-            </Text>
-            {voiceText ? (
-              <View style={styles.voiceTranscript}>
-                <Text style={styles.voiceTranscriptText}>{voiceText}</Text>
-              </View>
-            ) : isListening ? (
-              <Text style={styles.voiceHint}>환자 증상을 말씀해주세요</Text>
-            ) : null}
-            <View style={styles.voiceActions}>
-              {isListening ? (
-                <TouchableOpacity style={styles.voiceStopBtn} onPress={stopVoiceInput}>
-                  <Ionicons name="stop" size={18} color="#fff" style={{ marginRight: 6 }} />
-                  <Text style={styles.voiceStopBtnText}>중지</Text>
+
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>상세 증상</Text>
+              <View style={styles.detailRow}>
+                <TextInput
+                  style={styles.detailInput}
+                  placeholder="증상을 상세히 입력하세요..."
+                  placeholderTextColor="#ADB5BD"
+                  value={detailText}
+                  onChangeText={setDetailText}
+                  multiline
+                  textAlignVertical="top"
+                />
+                <TouchableOpacity
+                  style={[styles.micBtn, voiceListening && styles.micBtnActive]}
+                  onPress={toggleVoice}
+                  activeOpacity={0.88}
+                  accessibilityLabel="음성 입력"
+                >
+                  <Ionicons name={voiceListening ? 'stop' : 'mic'} size={22} color="#fff" />
                 </TouchableOpacity>
-              ) : (
-                <>
-                  <TouchableOpacity style={styles.voiceRetryBtn} onPress={startVoiceInput}>
-                    <Ionicons name="refresh" size={18} color={Colors.secondary} style={{ marginRight: 6 }} />
-                    <Text style={styles.voiceRetryBtnText}>다시</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.voiceApplyBtn} onPress={applyVoiceResult}>
-                    <Ionicons name="checkmark" size={18} color="#fff" style={{ marginRight: 6 }} />
-                    <Text style={styles.voiceApplyBtnText}>적용</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-              <TouchableOpacity
-                style={styles.voiceCancelBtn}
-                onPress={() => { stopVoiceInput(); setVoiceModalVisible(false); }}
-              >
-                <Text style={styles.voiceCancelBtnText}>취소</Text>
-              </TouchableOpacity>
+              </View>
             </View>
+
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>환자 정보</Text>
+
+              <View style={styles.twoCol}>
+                <View style={styles.col}>
+                  <Text style={styles.fieldMini}>성별</Text>
+                  <View style={styles.segmentRow}>
+                    {(['MALE', 'FEMALE'] as const).map((g) => {
+                      const on = gender === g;
+                      return (
+                        <TouchableOpacity
+                          key={g}
+                          style={[styles.segment, on && styles.segmentOn]}
+                          onPress={() => setGender(g)}
+                          activeOpacity={0.85}
+                        >
+                          <Text style={[styles.segmentText, on && styles.segmentTextOn]}>
+                            {g === 'MALE' ? '남성' : '여성'}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+                <View style={styles.col}>
+                  <Text style={styles.fieldMini}>연령대</Text>
+                  <Pressable style={styles.ageBox} onPress={() => setAgeModalVisible(true)}>
+                    <Text style={styles.ageBoxText} numberOfLines={1}>
+                      {AGE_GROUP_LABELS[ageGroup]}
+                    </Text>
+                    <Ionicons name="chevron-down" size={18} color={Colors.textSecondary} />
+                  </Pressable>
+                </View>
+              </View>
+
+              <Text style={[styles.fieldMini, styles.fieldMiniSpaced]}>의식 상태</Text>
+              <View style={styles.consciousRow}>
+                {CONSCIOUSNESS_OPTIONS.map((c) => {
+                  const on = consciousness === c.key;
+                  return (
+                    <TouchableOpacity
+                      key={c.key}
+                      style={[styles.consciousPill, on && styles.consciousPillOn]}
+                      onPress={() => setConsciousness(c.key)}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={[styles.consciousText, on && styles.consciousTextOn]}>{c.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          </ScrollView>
+
+          <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+            <HeartbeatSearchButton
+              label="응급실 검색"
+              iconName="search"
+              onPress={handleSearch}
+              disabled={!canSearch}
+              buttonStyle={styles.ctaCompact}
+            />
           </View>
+
+          <Modal visible={ageModalVisible} transparent animationType="fade" onRequestClose={() => setAgeModalVisible(false)}>
+            <Pressable style={styles.modalOverlay} onPress={() => setAgeModalVisible(false)}>
+              <View style={styles.modalCard}>
+                <Text style={styles.modalTitle}>연령대 선택</Text>
+                {AGE_ORDER.map((ag) => (
+                  <TouchableOpacity
+                    key={ag}
+                    style={[styles.modalRow, ageGroup === ag && styles.modalRowOn]}
+                    onPress={() => {
+                      setAgeGroup(ag);
+                      setAgeModalVisible(false);
+                    }}
+                  >
+                    <Text style={[styles.modalRowText, ageGroup === ag && styles.modalRowTextOn]}>
+                      {AGE_GROUP_LABELS[ag]}
+                    </Text>
+                    {ageGroup === ag ? <Ionicons name="checkmark" size={20} color={Colors.primary} /> : null}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </Pressable>
+          </Modal>
         </View>
-      </Modal>
-    </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  content: { padding: Spacing.xl, paddingBottom: 40 },
-  locationBar: {
-    backgroundColor: Colors.badgeBlue, borderRadius: BorderRadius.md,
-    padding: Spacing.md, marginBottom: Spacing.xl,
+  container: { flex: 1, backgroundColor: '#F4F5F7' },
+  inner: { flex: 1 },
+  scroll: { flex: 1 },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 8,
+    flexGrow: 1,
   },
-  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  locationIcon: { fontSize: 16 },
-  locationText: { fontSize: FontSize.sm, color: Colors.text },
-  sectionTitle: { fontSize: FontSize.md, fontWeight: '600', color: Colors.text, marginBottom: Spacing.md },
-  chipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: Spacing.xl },
-  chip: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 10, paddingHorizontal: 16,
-    borderRadius: BorderRadius.md, borderWidth: 1.5, borderColor: Colors.border,
-    backgroundColor: Colors.background,
+
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#ECEEF0',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 3,
+      },
+      android: { elevation: 1 },
+    }),
   },
-  chipSelected: { borderColor: Colors.primary, backgroundColor: '#FFF3F0' },
-  chipText: { fontSize: FontSize.md, color: Colors.textSecondary, fontWeight: '500' },
-  chipTextSelected: { color: Colors.primary, fontWeight: '600' },
-  detailRow: { flexDirection: 'row', gap: 8, marginBottom: Spacing.xl },
-  input: {
-    backgroundColor: Colors.inputBg, borderWidth: 1.5, borderColor: Colors.border,
-    borderRadius: BorderRadius.md, padding: 14, fontSize: FontSize.md, color: Colors.text, minHeight: 48,
+  cardTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#495057',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+  cardHint: {
+    fontSize: 11,
+    color: '#868E96',
+    marginTop: 2,
+    marginBottom: 10,
+    fontWeight: '500',
+  },
+
+  symptomGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -4,
+  },
+  symptomChip: {
+    width: '33.333%',
+    paddingHorizontal: 4,
+    marginBottom: 8,
+    alignItems: 'center',
+  },
+  symptomChipSelected: {},
+  iconRing: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F1F3F5',
+    borderWidth: 1.5,
+    borderColor: '#E9ECEF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  iconRingOn: {
+    backgroundColor: '#FFF5F5',
+    borderColor: Colors.primary,
+  },
+  symptomLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#343A40',
+    textAlign: 'center',
+  },
+  symptomLabelSelected: { color: Colors.primary },
+
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 8,
+    marginTop: 8,
+  },
+  detailInput: {
+    flex: 1,
+    minHeight: 48,
+    maxHeight: 64,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    lineHeight: 20,
+    color: Colors.text,
+    backgroundColor: '#FAFBFC',
   },
   micBtn: {
-    width: 48, height: 48, backgroundColor: Colors.primary,
-    borderRadius: BorderRadius.md, alignItems: 'center', justifyContent: 'center',
+    width: 48,
+    minHeight: 48,
+    borderRadius: 12,
+    backgroundColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+      },
+      android: { elevation: 3 },
+    }),
   },
-  micEmoji: { fontSize: 22 },
-  divider: { height: 1, backgroundColor: Colors.divider, marginBottom: Spacing.xl },
-  fieldLabel: { fontSize: FontSize.sm, color: Colors.textSecondary, marginBottom: 8 },
-  radioRow: { flexDirection: 'row', gap: 16, marginBottom: Spacing.xl },
-  radioItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  radioCircle: {
-    width: 20, height: 20, borderRadius: 10,
-    borderWidth: 2, borderColor: Colors.border,
-    alignItems: 'center', justifyContent: 'center',
+  micBtnActive: { backgroundColor: Colors.primaryDark },
+
+  twoCol: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 8,
   },
-  radioChecked: { borderColor: Colors.primary },
-  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: Colors.primary },
-  radioLabel: { fontSize: FontSize.md, color: Colors.text },
-  radioLabelSmall: { fontSize: FontSize.sm, color: Colors.text },
-  patientInfoWrapper: { flexDirection: 'row', gap: 16, marginBottom: Spacing.lg },
-  genderSection: { flex: 0.35 },
-  ageSection: { flex: 0.65 },
-  genderRow: { flexDirection: 'column', gap: 8, marginTop: 4 },
-  genderItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  ageChipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
-  ageChipCompact: {
-    paddingVertical: 6, paddingHorizontal: 10,
-    borderRadius: BorderRadius.sm, borderWidth: 1.5, borderColor: Colors.border, backgroundColor: Colors.background,
+  col: { flex: 1 },
+  fieldMini: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#868E96',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
-  ageChipTextSmall: { fontSize: 12, color: Colors.textSecondary },
-  radioRowCompact: { flexDirection: 'row', gap: 12, marginBottom: Spacing.md, flexWrap: 'wrap' },
-  searchBtn: {
-    backgroundColor: Colors.primary, borderRadius: BorderRadius.lg,
-    padding: 16, alignItems: 'center', marginTop: Spacing.sm,
+  fieldMiniSpaced: { marginTop: 10 },
+  segmentRow: {
+    flexDirection: 'row',
+    borderRadius: 10,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
   },
-  searchBtnText: { color: '#fff', fontSize: FontSize.lg, fontWeight: '700' },
-  // 음성 모달
-  voiceOverlay: {
-    flex: 1, backgroundColor: Colors.overlay,
-    alignItems: 'center', justifyContent: 'center',
+  segment: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    backgroundColor: '#FAFBFC',
   },
-  voiceModal: {
-    backgroundColor: '#fff', borderRadius: 24, padding: 30,
-    width: '85%', alignItems: 'center', elevation: 20, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 15,
+  segmentOn: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
-  voiceIconCircle: {
-    width: 100, height: 100, borderRadius: 50,
-    backgroundColor: '#F8F9FA', alignItems: 'center', justifyContent: 'center',
-    marginBottom: 20, borderWidth: 1, borderColor: '#eee',
+  segmentText: { fontSize: 13, fontWeight: '700', color: '#495057' },
+  segmentTextOn: { color: '#fff' },
+
+  ageBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    backgroundColor: '#FAFBFC',
+    gap: 4,
   },
-  voiceMic: { fontSize: 48, marginBottom: 12 },
-  voiceTitle: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.text, marginBottom: 8 },
-  voiceHint: { fontSize: FontSize.sm, color: Colors.textSecondary },
-  voiceTranscript: {
-    backgroundColor: '#F1F3F5', borderRadius: BorderRadius.md,
-    padding: 16, marginVertical: 14, width: '100%',
+  ageBoxText: { flex: 1, fontSize: 12, fontWeight: '600', color: Colors.text },
+
+  consciousRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 6,
   },
-  voiceTranscriptText: { fontSize: FontSize.md, color: Colors.text, lineHeight: 22, textAlign: 'center' },
-  voiceActions: { flexDirection: 'row', gap: 10, marginTop: 12, flexWrap: 'wrap', justifyContent: 'center' },
-  voiceStopBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.full, borderRadius: BorderRadius.md, paddingHorizontal: 20, paddingVertical: 12 },
-  voiceStopBtnText: { color: '#fff', fontWeight: '700' },
-  voiceRetryBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.badgeBlue, borderRadius: BorderRadius.md, paddingHorizontal: 16, paddingVertical: 12 },
-  voiceRetryBtnText: { color: Colors.secondary, fontWeight: '700' },
-  voiceApplyBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.available, borderRadius: BorderRadius.md, paddingHorizontal: 20, paddingVertical: 12 },
-  voiceApplyBtnText: { color: '#fff', fontWeight: '700' },
-  voiceCancelBtn: { width: '100%', alignItems: 'center', marginTop: 16 },
-  voiceCancelBtnText: { color: Colors.textSecondary, fontWeight: '500' },
+  consciousPill: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    backgroundColor: '#FAFBFC',
+    alignItems: 'center',
+  },
+  consciousPillOn: {
+    borderColor: Colors.primary,
+    backgroundColor: '#FFF5F5',
+  },
+  consciousText: { fontSize: 12, fontWeight: '700', color: '#495057' },
+  consciousTextOn: { color: Colors.primary },
+
+  footer: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    backgroundColor: '#F4F5F7',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#DEE2E6',
+  },
+  ctaCompact: {
+    height: 52,
+    borderRadius: 14,
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingVertical: 8,
+    maxHeight: 360,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F3F5',
+    color: Colors.text,
+  },
+  modalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  modalRowOn: { backgroundColor: '#FFF5F5' },
+  modalRowText: { fontSize: 16, color: '#212529' },
+  modalRowTextOn: { color: Colors.primary, fontWeight: '700' },
 });

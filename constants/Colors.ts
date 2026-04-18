@@ -1,5 +1,20 @@
 // 바로응급실 디자인 시스템 - 색상, 타이포그래피, 간격 상수
 export const Colors = {
+  /** Themed.tsx·EditScreenInfo 호환 */
+  light: {
+    text: '#212121',
+    background: '#FFFFFF',
+    tint: '#E53935',
+    tabIconDefault: '#9CA3AF',
+    tabIconSelected: '#E53935',
+  },
+  dark: {
+    text: '#ECEDEE',
+    background: '#151718',
+    tint: '#FF6F61',
+    tabIconDefault: '#9BA1A6',
+    tabIconSelected: '#FF6F61',
+  },
   // 브랜드 색상
   primary: '#E53935',
   primaryDark: '#B71C1C',
@@ -21,6 +36,7 @@ export const Colors = {
   textSecondary: '#757575',
   textLight: '#BDBDBD',
   textWhite: '#FFFFFF',
+  white: '#FFFFFF',
 
   // UI 요소
   border: '#E0E0E0',
@@ -34,6 +50,8 @@ export const Colors = {
   badgeRed: '#FFEBEE',
   badgeBlue: '#E3F2FD',
 };
+
+export default Colors;
 
 // 간격 시스템
 export const Spacing = {

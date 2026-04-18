@@ -1,30 +1,58 @@
 import { create } from 'zustand';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserProfile } from '@/src/types';
+
+const AUTH_STORAGE_KEY = 'baroer_user_v1';
+
+type SetUserOptions = { persist?: boolean };
 
 interface AuthState {
   user: UserProfile | null;
   isLoggedIn: boolean;
   isLoading: boolean;
-  setUser: (user: UserProfile | null) => void;
+  setUser: (user: UserProfile | null, options?: SetUserOptions) => void;
   setLoading: (loading: boolean) => void;
   logout: () => void;
+  checkAuth: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isLoggedIn: false,
-  isLoading: true, // 앱 초기화 시 로딩 상태로 시작
+  isLoading: true,
 
-  // 사용자 정보 저장 (Firebase onAuthStateChanged에서 호출됨)
-  setUser: (user: UserProfile | null) => {
+  setUser: (user, options) => {
+    const persist = options?.persist !== false;
+    if (user) {
+      if (persist) {
+        AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user)).catch(() => {});
+      } else {
+        AsyncStorage.removeItem(AUTH_STORAGE_KEY).catch(() => {});
+      }
+    } else {
+      AsyncStorage.removeItem(AUTH_STORAGE_KEY).catch(() => {});
+    }
     set({ user, isLoggedIn: !!user, isLoading: false });
   },
 
-  // 로그아웃
   logout: () => {
+    AsyncStorage.removeItem(AUTH_STORAGE_KEY).catch(() => {});
     set({ user: null, isLoggedIn: false, isLoading: false });
   },
 
-  // 로딩 상태 설정
   setLoading: (loading: boolean) => set({ isLoading: loading }),
+
+  checkAuth: async () => {
+    try {
+      const raw = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
+      if (raw) {
+        const user = JSON.parse(raw) as UserProfile;
+        set({ user, isLoggedIn: true, isLoading: false });
+        return;
+      }
+    } catch {
+      await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+    }
+    set({ isLoading: false });
+  },
 }));

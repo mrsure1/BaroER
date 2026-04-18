@@ -204,6 +204,11 @@ export async function logoutUser(): Promise<void> {
 }
 
 // 프로필 가져오기 (세션 복구 시 사용)
+/** 로그인 화면 이메일/비밀번호 — loginWithEmail 별칭 */
+export async function signInWithEmailPassword(email: string, pass: string): Promise<UserProfile> {
+  return loginWithEmail(email, pass);
+}
+
 export async function fetchUserProfile(uid: string): Promise<UserProfile | null> {
   try {
     const userRef = doc(db, 'users', uid);

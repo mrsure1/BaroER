@@ -1,6 +1,6 @@
 // 메인 대시보드 화면 (S-004)
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,10 +16,13 @@ export default function DashboardScreen() {
       {/* 상단 바 */}
       <View style={styles.topBar}>
         <View style={styles.brandRow}>
-          <Ionicons name="medkit-sharp" size={24} color={Colors.primary} style={{ marginRight: 6 }} />
+          <Text style={styles.brandEmoji}>🏥</Text>
           <Text style={styles.brandTitle}>바로응급실</Text>
         </View>
         <View style={styles.topBarIcons}>
+          <TouchableOpacity onPress={() => router.push('/(main)/settings')} accessibilityLabel="프로필 및 설정">
+            <Ionicons name="person-circle-outline" size={26} color={Colors.text} />
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => router.push('/(main)/settings')}>
             <Ionicons name="settings-outline" size={24} color={Colors.text} />
           </TouchableOpacity>
@@ -39,22 +42,25 @@ export default function DashboardScreen() {
         onPress={() => router.push('/(main)/search/input')}
         activeOpacity={0.85}
       >
-        <View style={styles.ctaIconCircle}>
-          <Ionicons name="flash-sharp" size={40} color={Colors.primary} />
-        </View>
-        <Text style={styles.ctaTitle}>응급실 빠른 찾기</Text>
-        <Text style={styles.ctaDesc}>현재 상태에 딱 맞는 응급실을{'\n'}AI가 실시간으로 분석하여 찾아줍니다.</Text>
+        <Text style={styles.ctaEmoji}>🚨</Text>
+        <Text style={styles.ctaTitle}>응급실 찾기</Text>
+        <Text style={styles.ctaDesc}>
+          환자 상태를 입력하고{'\n'}가장 가까운 응급실을{'\n'}즉시 찾아보세요
+        </Text>
       </TouchableOpacity>
 
       {/* 퀵 액션 */}
       <View style={styles.quickRow}>
-        <TouchableOpacity style={styles.quickCard}>
-          <Ionicons name="call-outline" size={28} color={Colors.full} style={{ marginBottom: 8 }} />
-          <Text style={styles.quickLabel}>119 긴급전화</Text>
+        <TouchableOpacity
+          style={styles.quickCard}
+          onPress={() => void Linking.openURL('tel:119')}
+        >
+          <Text style={{ fontSize: 26, marginBottom: 6 }}>📞</Text>
+          <Text style={styles.quickLabel}>119{'\n'}긴급 전화</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.quickCard} onPress={() => router.push('/(main)/search/list')}>
           <Ionicons name="document-text-outline" size={28} color={Colors.secondary} style={{ marginBottom: 8 }} />
-          <Text style={styles.quickLabel}>최근 검색기록</Text>
+          <Text style={styles.quickLabel}>최근{'\n'}검색 기록</Text>
         </TouchableOpacity>
       </View>
 
@@ -69,10 +75,10 @@ export default function DashboardScreen() {
             <Ionicons name="chevron-forward" size={16} color={Colors.secondary} />
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name="pencil-sharp" size={20} color={Colors.text} style={{ marginRight: 8 }} />
+            <Text style={{ fontSize: 18, marginRight: 8 }}>📝</Text>
             <Text style={styles.paramedicTitle}>업무 기록 관리</Text>
           </View>
-          <Text style={styles.paramedicDesc}>출동 기록 조회 및 문서 다운로드</Text>
+          <Text style={styles.paramedicDesc}>출동 기록 조회 · PDF/Excel 다운로드</Text>
         </TouchableOpacity>
       )}
     </ScrollView>
@@ -89,28 +95,31 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: '#F1F3F5',
   },
   brandRow: { flexDirection: 'row', alignItems: 'center' },
+  brandEmoji: { fontSize: 22, marginRight: 6 },
   brandTitle: { fontSize: 20, fontWeight: '900', color: Colors.primary, letterSpacing: -0.5 },
-  topBarIcons: { flexDirection: 'row', gap: 12 },
+  topBarIcons: { flexDirection: 'row', gap: 14, alignItems: 'center' },
   iconBtn: { fontSize: 22 },
   greeting: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.xl, paddingBottom: Spacing.md },
   greetingText: { fontSize: FontSize.lg, color: Colors.text, fontWeight: '700' },
   greetingName: { color: Colors.primary },
   // 메인 CTA
   ctaCard: {
-    marginHorizontal: Spacing.lg, padding: Spacing.xl,
-    backgroundColor: Colors.primary, borderRadius: 28,
+    marginHorizontal: Spacing.lg,
+    padding: Spacing.xl,
+    backgroundColor: Colors.background,
+    borderRadius: 24,
     alignItems: 'center',
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3, shadowRadius: 20, elevation: 12,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  ctaIconCircle: {
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: Spacing.lg,
-  },
-  ctaTitle: { fontSize: 22, fontWeight: '800', color: '#fff', marginBottom: 8 },
-  ctaDesc: { fontSize: 14, color: 'rgba(255,255,255,0.85)', textAlign: 'center', lineHeight: 22 },
+  ctaEmoji: { fontSize: 40, marginBottom: Spacing.md },
+  ctaTitle: { fontSize: 22, fontWeight: '800', color: Colors.primary, marginBottom: 10 },
+  ctaDesc: { fontSize: 15, color: Colors.textSecondary, textAlign: 'center', lineHeight: 24, fontWeight: '600' },
   // 퀵 액션
   quickRow: { flexDirection: 'row', gap: 12, margin: Spacing.lg },
   quickCard: {
