@@ -1,8 +1,22 @@
 # 바로응급실 (BaroER) - 데이터베이스 설계서
 
-> 문서 버전: 1.0  
-> 작성일: 2026-04-16  
+> 문서 버전: 2.0 (Web App)  
+> 최초 작성일: 2026-04-16  
+> 개정일: 2026-04-18 — 웹앱 전환에 맞춰 스토리지 구현 가이드·알림 토큰 주석 보강  
 > 작성자: MrSure
+
+## 0. 스토리지 구현 가이드
+
+실제 구현은 **Firebase Firestore** 기반 NoSQL 컬렉션을 우선 사용하되, 아래 스키마는 엔티티 구조와 인덱스 설계를 표현하는 관계형 기준 명세입니다. Firestore 로 옮길 때 규칙:
+
+- **UUID PK** → Firestore 문서 ID (`doc.id`)
+- **FK** → 서브컬렉션 또는 레퍼런스 필드 (`userRef: users/{uid}`)
+- **인덱스** → Firestore 복합 인덱스 콘솔 등록
+- **ENUM** → Zod/TypeScript 리터럴 타입으로 클라이언트·서버 양쪽 검증
+- **JSON** 컬럼 → 중첩 오브젝트 또는 배열 필드로 그대로 저장
+- **보존 기간** → Firestore TTL 정책 또는 Cloud Scheduler + Cloud Function 배치로 구현
+
+추후 트래픽이 커지면 Firestore → PostgreSQL(Supabase/Neon) 로 마이그레이션하는 것도 같은 스키마로 가능합니다.
 
 ---
 
@@ -71,7 +85,7 @@
 | user_type | ENUM('GENERAL','PARAMEDIC') | NOT NULL | 'GENERAL' | 사용자 유형 |
 | org_code | VARCHAR(20) | NULL | NULL | 구급대원 소속기관 코드 |
 | profile_image_url | VARCHAR(500) | NULL | NULL | 프로필 이미지 URL |
-| push_token | VARCHAR(255) | NULL | NULL | 푸시 알림 토큰 |
+| web_push_subscription | JSON | NULL | NULL | Web Push API 구독 객체 (`endpoint`, `keys.p256dh`, `keys.auth`). iOS Safari 는 홈 화면 설치 후에만 발급. 미발급 시 SMS/Email 폴백 |
 | is_active | BOOLEAN | NOT NULL | TRUE | 계정 활성 여부 |
 | created_at | TIMESTAMP | NOT NULL | CURRENT_TIMESTAMP | 생성일시 |
 | updated_at | TIMESTAMP | NOT NULL | CURRENT_TIMESTAMP | 수정일시 |
@@ -185,22 +199,26 @@
 
 ---
 
-### 2.6 auth_tokens (인증 토큰)
+### 2.6 auth_sessions (인증 세션)
+
+> 웹앱 전환 후: 토큰 발급·갱신은 Firebase Auth 가 담당합니다. 이 테이블은 서버사이드 세션 추적(강제 로그아웃·디바이스 관리·감사)용으로만 사용합니다.
 
 | 컬럼명 | 타입 | 제약조건 | 기본값 | 설명 |
 |--------|------|----------|--------|------|
-| id | UUID | PK | auto-gen | 토큰 ID |
+| id | UUID | PK | auto-gen | 세션 ID |
 | user_id | UUID | FK → users.id, NOT NULL | — | 사용자 |
-| access_token | VARCHAR(500) | NOT NULL | — | JWT 액세스 토큰 |
-| refresh_token | VARCHAR(500) | UNIQUE, NOT NULL | — | 리프레시 토큰 |
-| device_info | VARCHAR(255) | NULL | — | 디바이스 정보 |
-| expires_at | TIMESTAMP | NOT NULL | — | 토큰 만료 시각 |
+| session_cookie_hash | VARCHAR(255) | UNIQUE, NOT NULL | — | HTTP-only 세션 쿠키의 해시값 (실제 쿠키는 저장 안 함) |
+| user_agent | VARCHAR(500) | NULL | — | 브라우저 User-Agent (디바이스 식별용) |
+| ip_address | VARCHAR(45) | NULL | — | 접속 IP (IPv4/IPv6 대응) |
+| expires_at | TIMESTAMP | NOT NULL | — | 세션 만료 시각 |
+| last_seen_at | TIMESTAMP | NOT NULL | CURRENT_TIMESTAMP | 최종 활동 시각 |
 | created_at | TIMESTAMP | NOT NULL | CURRENT_TIMESTAMP | 발급 시각 |
-| is_revoked | BOOLEAN | NOT NULL | FALSE | 폐기 여부 |
+| is_revoked | BOOLEAN | NOT NULL | FALSE | 관리자/사용자 강제 로그아웃 여부 |
 
 **인덱스:**
-- `idx_auth_tokens_user_id` — user_id
-- `idx_auth_tokens_refresh_token` — refresh_token (UNIQUE)
+- `idx_auth_sessions_user_id` — user_id
+- `idx_auth_sessions_cookie_hash` — session_cookie_hash (UNIQUE)
+- `idx_auth_sessions_expires_at` — expires_at (정리 배치용)
 
 ---
 
@@ -211,7 +229,7 @@
 | users → patient_records | 1:N (한 사용자가 여러 환자 기록 생성) |
 | users → dispatch_logs | 1:N (한 구급대원이 여러 출동 기록 보유) |
 | users → call_logs | 1:N (한 사용자가 여러 자동전화 요청) |
-| users → auth_tokens | 1:N (한 사용자가 여러 기기 토큰 보유) |
+| users → auth_sessions | 1:N (한 사용자가 여러 브라우저/디바이스 세션 보유) |
 | hospitals → call_logs | 1:N (한 병원에 여러 자동전화 기록) |
 | hospitals → dispatch_logs | 1:N (한 병원이 여러 출동 수용) |
 | patient_records → dispatch_logs | 1:1 (한 환자 기록에 한 출동 기록) |
@@ -226,5 +244,5 @@
 | patient_records | 90일 | 개인정보 포함, 자동 삭제 |
 | dispatch_logs | 5년 | 구급대원 업무 기록 보존 의무 |
 | call_logs | 30일 | 통화 기록 단기 보존 |
-| auth_tokens | 만료 후 7일 | 만료/폐기 토큰 정리 |
+| auth_sessions | 만료 후 7일 | 만료/폐기 세션 정리 (Cloud Scheduler 배치) |
 | hospitals | 영구 | 공공데이터 기반 |

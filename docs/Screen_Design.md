@@ -1,8 +1,11 @@
 # 바로응급실 (BaroER) - 화면 설계서
 
-> 문서 버전: 1.0  
-> 작성일: 2026-04-16  
+> 문서 버전: 2.0 (Web App)  
+> 최초 작성일: 2026-04-16  
+> 개정일: 2026-04-18 — 웹앱(PWA) 기준으로 구현 메모·반응형 원칙 보강  
 > 작성자: MrSure
+>
+> **구현 메모** — 화면 프레임은 375px 폭 모바일 웹을 기준으로 설계합니다. 데스크톱(≥768px)은 좌우 여백 + 중앙 정렬로 동일 레이아웃을 유지하거나, 설정·업무기록 등 정보 밀도가 높은 화면에서 2-컬럼 레이아웃을 선택적으로 적용합니다. Next.js `app/` 라우터의 중첩 레이아웃으로 `(auth)`, `(main)` 을 분리합니다.
 
 ---
 
@@ -105,12 +108,14 @@
 
 | UI 요소 | ID | 타입 | 동작 |
 |---------|-----|------|------|
-| 이메일 입력 | `input_email` | TextInput | 이메일 형식 검증 |
-| 비밀번호 입력 | `input_password` | TextInput (보안) | 비밀번호 입력 |
-| 자동 로그인 체크 | `chk_auto_login` | Checkbox | 토큰 영구 저장 여부 |
-| 로그인 버튼 | `btn_login` | Button (Primary) | 인증 요청 실행 |
-| 회원가입 링크 | `link_register` | TextLink | 회원가입 화면으로 이동 |
-| 비밀번호 찾기 | `link_forgot_pw` | TextLink | 비밀번호 재설정 화면 |
+| 이메일 입력 | `input_email` | `<input type="email" />` | 이메일 형식 검증(Zod + HTML5) |
+| 비밀번호 입력 | `input_password` | `<input type="password" />` | 비밀번호 입력 |
+| 자동 로그인 체크 | `chk_auto_login` | `<input type="checkbox" />` | Firebase `browserLocalPersistence` vs `browserSessionPersistence` 전환 |
+| 로그인 버튼 | `btn_login` | `<button>` (Primary) | Firebase `signInWithEmailAndPassword` 호출 → ID Token → `/api/v1/auth/session` 쿠키 발급 |
+| 회원가입 링크 | `link_register` | `<Link>` (next/link) | `/register` 로 이동 |
+| 비밀번호 찾기 | `link_forgot_pw` | `<Link>` | 비밀번호 재설정 화면 (Firebase `sendPasswordResetEmail`) |
+| Google 로그인 | `btn_google` | `<button>` | `signInWithPopup(GoogleAuthProvider)` |
+| Kakao 로그인 | `btn_kakao` | `<button>` | Kakao JS SDK `Kakao.Auth.authorize({ redirectUri })` → `/api/v1/auth/kakao/callback` |
 
 ---
 
@@ -403,26 +408,31 @@
 
 | 원칙 | 설명 |
 |------|------|
-| **큰 터치 영역** | 응급 상황에서 떨리는 손으로도 조작 가능하도록 최소 48dp 터치 영역 |
-| **고대비 색상** | 밝은 환경/어두운 환경 모두에서 가독성 확보 |
-| **최소 단계** | 응급실 검색까지 최대 3탭 이내 도달 |
+| **큰 터치 영역** | 응급 상황에서 떨리는 손으로도 조작 가능하도록 최소 **48px** (3rem) 터치 영역 |
+| **고대비 색상** | 밝은 환경/어두운 환경 모두에서 가독성 확보 (WCAG AA 명도 대비 ≥ 4.5:1) |
+| **최소 단계** | 응급실 검색까지 최대 3클릭(탭) 이내 도달 |
 | **수용 상태 색상** | 🟢 녹색(#4CAF50), 🟠 주황(#FF9800), 🔴 빨강(#F44336) — 직관적 신호등 체계 |
-| **다크 모드 지원** | 야간 사용 시 눈 부담 감소 |
-| **음성 우선** | 손이 자유롭지 않을 때 마이크 버튼 항상 접근 가능 |
+| **다크 모드 지원** | Tailwind `dark:` 변형 + `prefers-color-scheme` 미디어 쿼리 |
+| **음성 우선** | 손이 자유롭지 않을 때 마이크 버튼 항상 접근 가능 (Web Speech API) |
+| **반응형** | 모바일 우선 375px 기준 설계 → 768px 이상 데스크톱에서 centered-frame 또는 2-컬럼 확장 |
+| **PWA 체감** | 앱 쉘 캐싱으로 재방문 시 즉시 로딩, 홈화면 설치 배너 노출 |
+| **접근성** | 키보드 포커스 가시성, `aria-label`, `role` 속성, 스크린리더 호환 |
 
 ---
 
 ## 4. 색상 팔레트
 
-| 용도 | 색상 | HEX |
-|------|------|-----|
-| Primary | 응급 레드 | `#E53935` |
-| Primary Dark | 진한 레드 | `#B71C1C` |
-| Secondary | 메디컬 블루 | `#1976D2` |
-| Background | 화이트 | `#FFFFFF` |
-| Background (Dark) | 다크 그레이 | `#121212` |
-| 수용 가능 | 그린 | `#4CAF50` |
-| 혼잡 | 오렌지 | `#FF9800` |
-| 수용 불가 | 레드 | `#F44336` |
-| 텍스트 | 다크 | `#212121` |
-| 서브텍스트 | 그레이 | `#757575` |
+| 용도 | 색상 | HEX | Tailwind 토큰 (예시) |
+|------|------|-----|---------------------|
+| Primary | 응급 레드 | `#E53935` | `bg-emergency-500` |
+| Primary Dark | 진한 레드 | `#B71C1C` | `bg-emergency-900` |
+| Secondary | 메디컬 블루 | `#1976D2` | `bg-medical-600` |
+| Background | 화이트 | `#FFFFFF` | `bg-white` |
+| Background (Dark) | 다크 그레이 | `#121212` | `dark:bg-neutral-950` |
+| 수용 가능 | 그린 | `#4CAF50` | `bg-status-available` |
+| 혼잡 | 오렌지 | `#FF9800` | `bg-status-busy` |
+| 수용 불가 | 레드 | `#F44336` | `bg-status-full` |
+| 텍스트 | 다크 | `#212121` | `text-neutral-900` |
+| 서브텍스트 | 그레이 | `#757575` | `text-neutral-500` |
+
+> `tailwind.config.ts` 의 `theme.extend.colors` 에 위 토큰을 등록해 전 화면에서 일관되게 사용합니다.

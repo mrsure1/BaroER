@@ -1,7 +1,8 @@
 # 바로응급실 (BaroER) - API 설계서
 
-> 문서 버전: 1.0  
-> 작성일: 2026-04-16  
+> 문서 버전: 2.0 (Web App)  
+> 최초 작성일: 2026-04-16  
+> 개정일: 2026-04-18 — Next.js API Route 기반, 웹 클라이언트용으로 재정의  
 > 작성자: MrSure
 
 ---
@@ -10,9 +11,12 @@
 
 | 항목 | 내용 |
 |------|------|
-| Base URL | `https://api.baroer.com/api/v1` |
-| 프로토콜 | HTTPS (TLS 1.3) |
-| 인증 방식 | JWT Bearer Token |
+| Base URL (운영) | `https://baroer.vercel.app/api/v1` (또는 커스텀 도메인) |
+| Base URL (로컬) | `http://localhost:3000/api/v1` |
+| 프로토콜 | HTTPS (TLS 1.3) — Vercel 자동 적용 |
+| 구현 | **Next.js App Router API Routes** (`app/api/v1/**/route.ts`) |
+| 인증 방식 | Firebase ID Token (HTTP-only 쿠키) — 서버에서 Admin SDK 로 검증 |
+| 세션 갱신 | Firebase Auth 의 자동 토큰 갱신, 쿠키는 만료 시 재발급 |
 | 응답 형식 | JSON |
 | 문자 인코딩 | UTF-8 |
 | API 버전 관리 | URL 경로 (`/api/v1/`, `/api/v2/`) |
@@ -45,6 +49,14 @@
 ---
 
 ## 2. 인증 API (Auth)
+
+> **웹앱 구현 메모** — 로그인/회원가입은 브라우저에서 Firebase Web SDK 로 직접 수행하고, ID Token 을 `/api/v1/auth/session` 에 POST 해 HTTP-only 쿠키로 교환합니다. 아래 엔드포인트 명세는 참고용이며, 실제 클라이언트가 먼저 Firebase 로 인증 후 서버 세션 쿠키를 발급받는 구조입니다.
+>
+> ```
+> [브라우저] Firebase Web SDK → ID Token
+>      └→ POST /api/v1/auth/session  (ID Token)
+>         └→ [서버] Firebase Admin 으로 검증 → Set-Cookie (HTTP-only)
+> ```
 
 ### 2.1 회원가입
 
@@ -486,19 +498,28 @@
 
 ### 7.2 지도 API
 
-| API | 용도 | 인증 |
-|-----|------|------|
-| 카카오맵 JavaScript SDK | 지도 렌더링, 마커 표시 | REST API Key |
-| 카카오 모빌리티 API | 경로 탐색, ETA 계산 | REST API Key |
-| (대안) 네이버 지도 API | 지도 렌더링 | Client ID + Secret |
+웹앱 전환 후 **네이버 지도 JavaScript API** 를 기본으로 채택합니다. 이미 `.env` 에 NCP Maps 키가 발급되어 있고, 응급실 좌표가 WGS84 기반이라 바로 마커 렌더링이 가능합니다.
+
+| API | 용도 | 인증 | 사용 위치 |
+|-----|------|------|----------|
+| **네이버 지도 JavaScript API v3** | 지도 렌더링, 마커, 인포윈도우 | `NEXT_PUBLIC_NAVER_MAP_CLIENT_ID` (JS 전용) | 클라이언트 |
+| **네이버 Directions 5 API** | 경로 탐색, ETA 계산 | `NAVER_CLIENT_ID` + `NAVER_CLIENT_SECRET` | **서버 API Route** |
+| (대안) 카카오맵 JavaScript SDK | 지도 렌더링 | `NEXT_PUBLIC_KAKAO_JS_KEY` | 클라이언트 |
+| (대안) 카카오 모빌리티 Directions | 경로 탐색 | `KAKAO_REST_API_KEY` | 서버 API Route |
+
+> NCP 콘솔의 **"Web 서비스 URL"** 에 운영 도메인(예: `https://baroer.vercel.app`) 과 `http://localhost:3000` 을 반드시 등록해야 JS SDK 인증이 통과합니다.
 
 ---
 
 ### 7.3 음성 인식 API
 
+웹앱은 **브라우저 내장 Web Speech API** 를 먼저 사용합니다. 추가 비용·서버 트래픽 없이 한국어 인식 가능하며, Chrome/Edge/Safari 15+ 에서 동작합니다.
+
 | API | 용도 | 비고 |
 |-----|------|------|
-| Google Cloud Speech-to-Text | STT 변환 | 스트리밍 지원, 한국어 최적화 |
+| **Web Speech API (`SpeechRecognition`)** | STT 변환 | 기본 엔진, 클라이언트 전용, 추가 키 불필요 |
+| Google Cloud Speech-to-Text | STT 변환 (서버 옵션) | 긴 녹음·고정밀 인식 필요 시 |
+| (대안) 네이버 CLOVA Speech | STT 변환 | 의료 용어 커스텀 사전 가능 |
 | (대안) 카카오 음성 API | STT 변환 | 국내 서비스 |
 
 ---
@@ -516,13 +537,16 @@
 
 | 정책 | 내용 |
 |------|------|
-| 인증 | JWT Bearer Token (만료: 1시간) |
-| 리프레시 | Refresh Token (만료: 30일) |
-| Rate Limiting | 분당 60회 (인증 API: 분당 10회) |
-| CORS | 앱 전용 (웹 접근 제한) |
-| 데이터 암호화 | 전송 중: TLS 1.3, 저장 시: AES-256 |
-| 입력 검증 | 모든 입력값 서버 측 검증 (SQL Injection, XSS 방지) |
-| 감사 로그 | 모든 API 요청 로깅 (IP, 사용자, 시간) |
+| 인증 | Firebase ID Token (HTTP-only, Secure, SameSite=Lax 쿠키) |
+| 세션 갱신 | Firebase Auth 자동 갱신 + 쿠키 재발급 |
+| Rate Limiting | 분당 60회 (인증 API: 분당 10회) — Vercel Edge Middleware 또는 Upstash Rate Limit |
+| CORS | **허용 도메인 화이트리스트**: `https://baroer.vercel.app`, `https://baroer.com`, `http://localhost:3000` (개발) |
+| CSRF | SameSite=Lax 쿠키 + Origin 헤더 검증 (Next.js Server Actions 기본 보호) |
+| 데이터 암호화 | 전송 중: TLS 1.3, 저장 시: Firestore 기본 암호화 |
+| 서버 전용 키 보호 | 공공데이터 서비스키·네이버 Directions 시크릿·카카오 REST 키는 **API Route 에서만 사용**, 브라우저 노출 금지 (`NEXT_PUBLIC_` 접두사 금지) |
+| 입력 검증 | 모든 입력값 서버 측 검증 (Zod 스키마 + Firestore Rules) |
+| XSS 방지 | React 기본 이스케이핑 + DOMPurify (필요 시) |
+| 감사 로그 | 모든 API 요청 로깅 (IP, 사용자 UID, 시간) — Vercel Logs + Firestore `audit_logs` 컬렉션 |
 
 ---
 

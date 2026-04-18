@@ -1,8 +1,11 @@
 # 바로응급실 (BaroER) - 기능 명세서
 
-> 문서 버전: 1.0  
-> 작성일: 2026-04-16  
+> 문서 버전: 2.0 (Web App)  
+> 최초 작성일: 2026-04-16  
+> 개정일: 2026-04-18 — 웹앱(PWA) 용어로 조정  
 > 작성자: MrSure
+>
+> **구현 플랫폼 표기** — 아래 명세에서 "앱"은 **웹 클라이언트(브라우저 또는 PWA 설치 버전)** 을 의미합니다. "설치", "재실행" 등의 표현은 홈 화면 PWA 설치 또는 브라우저 재방문으로 읽으면 됩니다.
 
 각 기능에 대해 아래 6개 항목으로 상세 명세를 작성합니다.
 
@@ -197,8 +200,10 @@
 
 | 외부 API | 용도 | 비고 |
 |----------|------|------|
-| Google Cloud Speech-to-Text | 음성 인식 | 한국어 지원, 실시간 스트리밍 |
+| **Web Speech API** | 음성 인식 (1차 선택) | 브라우저 내장, 별도 키·서버 불필요. Chrome/Edge/Safari 15+ 지원 |
+| Google Cloud Speech-to-Text | 음성 인식 (고정밀 옵션) | 한국어 지원, 실시간 스트리밍. Web Speech 로 안 될 때 서버 폴백 |
 | 카카오 음성 API (대안) | 음성 인식 | 국내 서비스, 한국어 최적화 |
+| 네이버 CLOVA Speech (대안) | 음성 인식 | 의료 용어 커스텀 사전 가능 |
 
 ### 6. 예외 처리 및 에러 케이스
 
@@ -296,10 +301,11 @@
 
 | 외부 API | 용도 | 비고 |
 |----------|------|------|
-| 국립중앙의료원 응급의료정보 API | 응급실 실시간 가용병상 조회 | 공공데이터포털 (data.go.kr) |
-| 카카오맵 API | 지도 표시, 마커 렌더링 | JavaScript SDK / Mobile SDK |
-| 네이버 지도 API (대안) | 지도 표시 | — |
-| 카카오 모빌리티 API | 예상 소요시간 계산 | 경로 탐색 |
+| 국립중앙의료원 응급의료정보 API | 응급실 실시간 가용병상 조회 | 공공데이터포털 (data.go.kr) — **Next.js API Route 에서 프록시**(서비스키 서버 보호) |
+| **네이버 지도 JavaScript API v3** | 지도 표시, 마커 렌더링 | 웹앱 기본 지도 — `NEXT_PUBLIC_NAVER_MAP_CLIENT_ID` 로 클라이언트 로드 |
+| 네이버 Directions 5 API | 예상 소요시간·경로 계산 | **서버 API Route** 에서 호출 (Client Secret 보호) |
+| 카카오맵 JavaScript SDK (대안) | 지도 표시 | `NEXT_PUBLIC_KAKAO_JS_KEY` |
+| 카카오 모빌리티 API (대안) | 경로 탐색 | 서버 전용 키 |
 
 ### 6. 예외 처리 및 에러 케이스
 
@@ -390,10 +396,11 @@
 
 | 외부 연동 | 용도 | 비고 |
 |----------|------|------|
-| 카카오내비 앱 | 길안내 | URI Scheme: `kakaomap://route?` |
-| T맵 앱 | 길안내 | URI Scheme: `tmap://route?` |
-| 네이버지도 앱 | 길안내 | URI Scheme: `nmap://route/car?` |
-| 전화 앱 | 응급실 직접 전화 | `tel:` URI Scheme |
+| 카카오내비 앱 | 길안내 | URL 스킴: `kakaomap://route?` — 브라우저에서 `window.location` 으로 호출. 미설치 시 스토어 폴백 URL |
+| T맵 앱 | 길안내 | URL 스킴: `tmap://route?` |
+| 네이버지도 앱 | 길안내 | URL 스킴: `nmap://route/car?` |
+| 전화 앱 | 응급실 직접 전화 | `tel:` 하이퍼링크 — 모바일 브라우저에서 기본 지원 |
+| 웹 지도 경로 미리보기 | 내비 앱 미설치 폴백 | 네이버 지도 웹(`https://map.naver.com/...`) 또는 카카오맵 웹으로 새 탭 열기 |
 
 ### 6. 예외 처리 및 에러 케이스
 
@@ -549,11 +556,12 @@
 
 ### 5. API 및 연동 정보
 
-| 외부 연동 | URI Scheme | 비고 |
+| 외부 연동 | URL Scheme | 비고 |
 |----------|-----------|------|
-| 카카오내비 | `kakaomap://route?sp={origin}&ep={dest}&by=CAR` | 카카오맵 앱 필요 |
-| T맵 | `tmap://route?goalx={lng}&goaly={lat}&goalname={name}` | T맵 앱 필요 |
-| 네이버지도 | `nmap://route/car?slat={}&slng={}&dlat={}&dlng={}&dname={}` | 네이버지도 앱 필요 |
+| 카카오내비 | `kakaomap://route?sp={origin}&ep={dest}&by=CAR` | 모바일 카카오맵 앱 필요. 웹 폴백: `https://map.kakao.com/link/to/...` |
+| T맵 | `tmap://route?goalx={lng}&goaly={lat}&goalname={name}` | T맵 앱 필요. 웹 폴백: `https://apis.openapi.sk.com/tmap/app/routes?...` |
+| 네이버지도 | `nmap://route/car?slat={}&slng={}&dlat={}&dlng={}&dname={}` | 네이버지도 앱 필요. 웹 폴백: `https://map.naver.com/v5/directions/...` |
+| 길안내 호출 방식 | `window.location.href = scheme` + `setTimeout` 으로 폴백 | iOS Safari 는 `Intent://` 스킴 대신 Universal Link 형태를 선호 |
 
 ### 6. 예외 처리 및 에러 케이스
 
@@ -737,7 +745,8 @@
 
 | 외부 API | 용도 | 비고 |
 |----------|------|------|
-| Google Cloud Speech-to-Text | 음성→텍스트 변환 | 실시간 스트리밍 STT, 한국어 지원 |
+| **Web Speech API (`SpeechRecognition`)** | 음성→텍스트 변환 (기본) | 브라우저 내장, 별도 키 불필요, HTTPS 환경 필수 |
+| Google Cloud Speech-to-Text | 음성→텍스트 변환 (서버 폴백) | 고정밀·긴 녹음·Chrome 외 환경용 |
 | 카카오 음성 API (대안) | 음성→텍스트 변환 | 국내 서비스, 한국어 최적화 |
 | 네이버 CLOVA Speech (대안) | 음성→텍스트 변환 | 한국어 의료 용어 커스텀 사전 가능 |
 
