@@ -1,0 +1,43 @@
+{
+  "name": "바로응급실 — BaroER",
+  "short_name": "바로응급실",
+  "description": "긴급할 때, 바로 찾는 가장 가까운 응급실",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#E53935",
+  "categories": ["medical", "health", "utilities"],
+  "lang": "ko-KR",
+  "dir": "ltr",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "응급실 찾기",
+      "short_name": "응급실",
+      "description": "가장 가까운 응급실을 즉시 검색",
+      "url": "/search",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

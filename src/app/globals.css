@@ -1,0 +1,210 @@
+@import "tailwindcss";
+
+/* ---------- Design Tokens (light) ---------- */
+:root {
+  /* Neutral scale — warm-cool balanced */
+  --color-bg: 255 255 255;
+  --color-surface: 250 250 251;
+  --color-surface-2: 244 244 247;
+  --color-border: 231 231 237;
+  --color-border-strong: 210 210 220;
+  --color-text: 16 18 24;
+  --color-text-muted: 99 102 115;
+  --color-text-subtle: 142 145 160;
+
+  /* Brand — 응급 레드 (PRD) — 톤 다운된 깊은 레드 */
+  --color-primary: 229 57 53;      /* #E53935 */
+  --color-primary-hover: 211 47 47;
+  --color-primary-soft: 253 235 235;
+  --color-primary-fg: 255 255 255;
+
+  /* Medical accent — teal 계열로 모던하게 */
+  --color-accent: 13 148 136;       /* teal-600 */
+  --color-accent-soft: 220 252 247;
+
+  /* Status — 신호등 (PRD 지정) */
+  --color-status-available: 34 197 94;   /* emerald-500 */
+  --color-status-available-soft: 220 252 231;
+  --color-status-busy: 249 115 22;       /* orange-500 */
+  --color-status-busy-soft: 255 237 213;
+  --color-status-full: 239 68 68;        /* red-500 */
+  --color-status-full-soft: 254 226 226;
+
+  /* Elevation */
+  --shadow-sm: 0 1px 2px 0 rgb(16 18 24 / 0.04);
+  --shadow-md: 0 6px 16px -4px rgb(16 18 24 / 0.08), 0 2px 4px -2px rgb(16 18 24 / 0.04);
+  --shadow-lg: 0 24px 48px -12px rgb(16 18 24 / 0.18);
+  --shadow-glow: 0 0 0 4px rgb(229 57 53 / 0.12);
+
+  /* Radii */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.875rem;
+  --radius-lg: 1.25rem;
+  --radius-xl: 1.75rem;
+  --radius-pill: 9999px;
+}
+
+/* ---------- Design Tokens (dark) ---------- */
+.dark {
+  --color-bg: 10 11 14;
+  --color-surface: 18 20 26;
+  --color-surface-2: 26 28 36;
+  --color-border: 40 42 52;
+  --color-border-strong: 58 60 72;
+  --color-text: 245 246 250;
+  --color-text-muted: 168 172 186;
+  --color-text-subtle: 118 122 138;
+
+  --color-primary: 248 113 113;     /* red-400 on dark for contrast */
+  --color-primary-hover: 252 165 165;
+  --color-primary-soft: 60 26 26;
+  --color-primary-fg: 20 10 10;
+
+  --color-accent: 45 212 191;       /* teal-400 */
+  --color-accent-soft: 17 64 58;
+
+  --color-status-available: 74 222 128;
+  --color-status-available-soft: 22 60 40;
+  --color-status-busy: 251 146 60;
+  --color-status-busy-soft: 76 38 14;
+  --color-status-full: 248 113 113;
+  --color-status-full-soft: 76 22 22;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --shadow-md: 0 6px 16px -4px rgb(0 0 0 / 0.45), 0 2px 4px -2px rgb(0 0 0 / 0.25);
+  --shadow-lg: 0 24px 48px -12px rgb(0 0 0 / 0.7);
+}
+
+/* ---------- Tailwind v4 theme mapping ---------- */
+@theme inline {
+  --color-bg: rgb(var(--color-bg));
+  --color-surface: rgb(var(--color-surface));
+  --color-surface-2: rgb(var(--color-surface-2));
+  --color-border: rgb(var(--color-border));
+  --color-border-strong: rgb(var(--color-border-strong));
+  --color-text: rgb(var(--color-text));
+  --color-text-muted: rgb(var(--color-text-muted));
+  --color-text-subtle: rgb(var(--color-text-subtle));
+
+  --color-primary: rgb(var(--color-primary));
+  --color-primary-hover: rgb(var(--color-primary-hover));
+  --color-primary-soft: rgb(var(--color-primary-soft));
+  --color-primary-fg: rgb(var(--color-primary-fg));
+
+  --color-accent: rgb(var(--color-accent));
+  --color-accent-soft: rgb(var(--color-accent-soft));
+
+  --color-status-available: rgb(var(--color-status-available));
+  --color-status-available-soft: rgb(var(--color-status-available-soft));
+  --color-status-busy: rgb(var(--color-status-busy));
+  --color-status-busy-soft: rgb(var(--color-status-busy-soft));
+  --color-status-full: rgb(var(--color-status-full));
+  --color-status-full-soft: rgb(var(--color-status-full-soft));
+
+  --font-sans:
+    "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+    "system-ui", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --font-mono:
+    "JetBrains Mono", "SF Mono", ui-monospace, "Menlo", "Consolas", monospace;
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-pill: var(--radius-pill);
+
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-glow: var(--shadow-glow);
+}
+
+/* ---------- Base ---------- */
+html,
+body {
+  background: rgb(var(--color-bg));
+  color: rgb(var(--color-text));
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  /* Safe-area 패딩 기본 클래스에서 env() 활용할 수 있도록 min-height 확보 */
+  min-height: 100dvh;
+  min-height: 100svh;
+}
+
+/* 모바일 탭 시 파란 하이라이트 제거, 스크롤 바운스 튜닝 */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* iOS 입력 필드 줌 방지 — 16px 이상 유지 */
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+
+/* 스크롤바 slim */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--color-border-strong));
+  border-radius: 9999px;
+  border: 2px solid rgb(var(--color-bg));
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--color-text-subtle));
+}
+
+/* ---------- Utility helpers ---------- */
+@utility safe-top {
+  padding-top: max(env(safe-area-inset-top), 0.75rem);
+}
+@utility safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom), 0.75rem);
+}
+@utility safe-x {
+  padding-left: max(env(safe-area-inset-left), 1rem);
+  padding-right: max(env(safe-area-inset-right), 1rem);
+}
+
+/* Page transition (motion 과 결합 가능) */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--color-surface)) 0%,
+    rgb(var(--color-surface-2)) 50%,
+    rgb(var(--color-surface)) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+/* Emergency heartbeat pulse — used on key CTA */
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  12% { transform: scale(1.08); }
+  24% { transform: scale(1); }
+  36% { transform: scale(1.05); }
+  48% { transform: scale(1); }
+}
+.heartbeat {
+  animation: heartbeat 1.6s ease-in-out infinite;
+}
+
+/* Focus ring — 응급 레드 기반 */
+@utility focus-ring {
+  outline: none;
+  box-shadow: 0 0 0 2px rgb(var(--color-bg)), 0 0 0 4px rgb(var(--color-primary));
+}
