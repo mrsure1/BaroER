@@ -83,7 +83,7 @@ export async function GET(
     }
     const body = (await res.json()) as PublicDataEnvelope<BassItem>;
     const raw = body?.response?.body?.items;
-    if (!raw || raw === "") {
+    if (!raw) {
       return NextResponse.json({ totals: null }, { status: 200 });
     }
     const item = raw.item;

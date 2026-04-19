@@ -9,6 +9,7 @@ import {
   onNaverAuthFailure,
   type NaverLatLng,
   type NaverMapInstance,
+  type NaverMapsNamespace,
   type NaverMarkerInstance,
 } from "@/lib/naverMaps";
 import type { CapacityLevel, Hospital } from "@/types/hospital";
@@ -239,7 +240,7 @@ export function NaverMap({
   useEffect(() => {
     if (!mapRef.current) return;
 
-    const drawMarkers = (maps: typeof window.naver.maps) => {
+    const drawMarkers = (maps: NaverMapsNamespace) => {
       if (!mapRef.current) return;
       markersRef.current.forEach((m) => m.setMap(null));
       markersRef.current = hospitals.map((h, i) => {

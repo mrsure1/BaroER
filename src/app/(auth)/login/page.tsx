@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
@@ -18,6 +18,16 @@ import {
 } from "@/services/auth";
 
 export default function LoginPage() {
+  // useSearchParams() 는 정적 prerender 단계에서 평가될 수 없어 Suspense 경계가 필수.
+  // 빈 fallback 으로 충분 — 실제 콘텐츠는 클라이언트에서 즉시 hydration 된다.
+  return (
+    <Suspense fallback={null}>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   // 인증 가드가 보낸 ?next=... 가 있다면 로그인 후 원래 가려던 경로로,

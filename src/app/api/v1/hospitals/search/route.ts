@@ -267,7 +267,7 @@ async function fetchNearestStage1Seeds(
     url.searchParams.set("_type", "json");
     const body = await fetchJson<PublicDataEnvelope<ListItem>>(url, signal);
     const raw = body?.response?.body?.items;
-    if (!raw || raw === "") return [];
+    if (!raw) return [];
     const item = raw.item;
     if (!item) return [];
     const arr = Array.isArray(item) ? item : [item];
@@ -319,7 +319,7 @@ async function fetchListForStage1(
   url.searchParams.set("_type", "json");
   const body = await fetchJson<PublicDataEnvelope<ListItem>>(url, signal);
   const raw = body?.response?.body?.items;
-  if (!raw || raw === "") return [];
+  if (!raw) return [];
   const item = raw.item;
   if (!item) return [];
   return Array.isArray(item) ? item : [item];
@@ -360,7 +360,7 @@ async function fetchRealtimeMapForStage1(
   const body = await fetchJson<PublicDataEnvelope<RealtimeItem>>(url, signal);
   const raw = body?.response?.body?.items;
   const map = new Map<string, RealtimeBeds>();
-  if (!raw || raw === "") return map;
+  if (!raw) return map;
   const item = raw.item;
   if (!item) return map;
   const arr = Array.isArray(item) ? item : [item];
