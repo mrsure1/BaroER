@@ -31,7 +31,9 @@ import { loadNaverMaps } from "@/lib/naverMaps";
 import { CAPACITY_META } from "@/lib/mockHospitals";
 import { fetchNearbyHospitals, fetchHospitalTotals } from "@/services/hospitals";
 import { reverseGeocode } from "@/services/geocode";
-import { openNaverDirections } from "@/lib/naverDirections";
+import { getNavApp, launchNavigation, type NavAppId } from "@/lib/navApps";
+import { useNavPrefStore } from "@/stores/navPrefStore";
+import { NavigatorPickerSheet } from "@/components/maps/NavigatorPickerSheet";
 import { useSearchStore, type GeoReason } from "@/stores/searchStore";
 import { useHistoryStore } from "@/stores/historyStore";
 import type { Hospital } from "@/types/hospital";
@@ -68,6 +70,44 @@ export default function SearchResultsPage() {
   const [sort, setSort] = useState<Sort>("eta");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [radiusKm, setRadiusKm] = useState<number>(DEFAULT_RADIUS_KM);
+
+  // 길안내(navigation) — 사용자가 첫 사용 시 picker 로 내비 앱을 고르고,
+  // 한 번 선택된 앱은 navPrefStore 에 저장되어 다음 길안내부터는 picker 없이
+  // 곧장 해당 앱으로 진입한다. 설정 → 기본 내비 메뉴에서 초기화 가능.
+  const navId = useNavPrefStore((s) => s.navId);
+  const setNavPref = useNavPrefStore((s) => s.setNav);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pendingDest, setPendingDest] = useState<{
+    lat: number;
+    lng: number;
+    name: string;
+  } | null>(null);
+
+  const handleNavigate = (hospital: Hospital) => {
+    if (!coords) return;
+    const dest = { lat: hospital.lat, lng: hospital.lng, name: hospital.name };
+    const origin = { lat: coords.lat, lng: coords.lng, name: "현재 위치" };
+    const saved = getNavApp(navId);
+    if (saved) {
+      launchNavigation(saved, origin, dest);
+      return;
+    }
+    setPendingDest(dest);
+    setPickerOpen(true);
+  };
+
+  const handlePickerSelect = (id: NavAppId) => {
+    setNavPref(id);
+    setPickerOpen(false);
+    if (!coords || !pendingDest) return;
+    const app = getNavApp(id);
+    if (!app) return;
+    const origin = { lat: coords.lat, lng: coords.lng, name: "현재 위치" };
+    // 사용자 탭 → 내비 앱 진입을 같은 user gesture 내에서 처리해야
+    // iOS Safari 등에서 deep link 차단을 피한다.
+    launchNavigation(app, origin, pendingDest);
+    setPendingDest(null);
+  };
 
   // 검색 결과 페이지 진입 즉시 네이버 지도 SDK 를 백그라운드 preload.
   // 사용자가 list view 를 보는 동안 SDK 다운로드 + namespace 평가가 끝나서,
@@ -294,7 +334,7 @@ export default function SearchResultsPage() {
                       index={i}
                       active={selectedId === h.id}
                       onTap={() => setSelectedId(h.id)}
-                      origin={coords!}
+                      onDirections={() => handleNavigate(h)}
                     />
                   ))
                 )}
@@ -342,7 +382,10 @@ export default function SearchResultsPage() {
                             hospital={
                               hospitals.find((h) => h.id === selectedId) ?? null
                             }
-                            origin={coords!}
+                            onDirections={() => {
+                              const sel = hospitals.find((h) => h.id === selectedId);
+                              if (sel) handleNavigate(sel);
+                            }}
                           />
                         </div>
                       </motion.div>
@@ -374,6 +417,16 @@ export default function SearchResultsPage() {
           )}
         </div>
       </div>
+
+      <NavigatorPickerSheet
+        open={pickerOpen}
+        currentId={navId}
+        onSelect={handlePickerSelect}
+        onClose={() => {
+          setPickerOpen(false);
+          setPendingDest(null);
+        }}
+      />
     </>
   );
 }
@@ -437,13 +490,13 @@ function HospitalCard({
   index,
   active,
   onTap,
-  origin,
+  onDirections,
 }: {
   hospital: Hospital;
   index: number;
   active: boolean;
   onTap: () => void;
-  origin: { lat: number; lng: number };
+  onDirections: () => void;
 }) {
   const meta = CAPACITY_META[hospital.capacity];
   const er = hospital.realtime?.er ?? null;
@@ -560,11 +613,7 @@ function HospitalCard({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              openNaverDirections(
-                { lat: origin.lat, lng: origin.lng, name: "현재 위치" },
-                { lat: hospital.lat, lng: hospital.lng, name: hospital.name },
-                "car",
-              );
+              onDirections();
             }}
             className="flex items-center justify-center gap-2 py-3 text-[13.5px] font-semibold text-primary transition-colors hover:bg-primary-soft"
           >
@@ -629,10 +678,10 @@ function MapCompactRow({
 
 function SelectedSummary({
   hospital,
-  origin,
+  onDirections,
 }: {
   hospital: Hospital | null;
-  origin: { lat: number; lng: number };
+  onDirections: () => void;
 }) {
   if (!hospital) return null;
   const meta = CAPACITY_META[hospital.capacity];
@@ -658,13 +707,7 @@ function SelectedSummary({
         </div>
         <button
           type="button"
-          onClick={() =>
-            openNaverDirections(
-              { lat: origin.lat, lng: origin.lng, name: "현재 위치" },
-              { lat: hospital.lat, lng: hospital.lng, name: hospital.name },
-              "car",
-            )
-          }
+          onClick={onDirections}
           className="rounded-full bg-primary px-3 py-1.5 text-[12.5px] font-semibold text-primary-fg shadow-[var(--shadow-md)]"
         >
           길안내

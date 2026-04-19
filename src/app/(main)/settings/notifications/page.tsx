@@ -97,10 +97,14 @@ export default function NotificationsSettingsPage() {
             </p>
           ) : (
             <div className="flex items-center justify-between gap-3">
-              <p className="text-[12.5px] text-text-muted">
+              <p className="min-w-0 flex-1 text-[12.5px] text-text-muted">
                 중요한 상황을 놓치지 않으려면 알림을 허용해 주세요.
               </p>
-              <Button size="sm" onClick={requestPermission}>
+              <Button
+                size="sm"
+                onClick={requestPermission}
+                className="shrink-0 whitespace-nowrap"
+              >
                 허용
               </Button>
             </div>

@@ -7,6 +7,7 @@ import {
   Globe,
   HelpCircle,
   LogOut,
+  Navigation,
   Palette,
   Shield,
   UserCircle,
@@ -31,6 +32,7 @@ const groups: Array<{ title: string; rows: Row[] }> = [
       { label: "프로필 설정", href: "/settings/profile", Icon: UserCircle },
       { label: "알림", href: "/settings/notifications", Icon: Bell },
       { label: "언어", href: "/settings/language", Icon: Globe },
+      { label: "기본 내비", href: "/settings/navigator", Icon: Navigation },
     ],
   },
   {
