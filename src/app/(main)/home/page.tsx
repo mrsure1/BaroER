@@ -131,14 +131,58 @@ function HeroCard() {
                 </p>
               </div>
               {/* ============================================================
-                  ★ HeroCard 강조 아이콘 — 현재: "회전 + 반짝" 디자인
+                  ★ HeroCard 강조 아이콘 — 현재: "경광등 깜빡임" 디자인
                   ------------------------------------------------------------
-                  · 외곽 conic-gradient ring 이 8초 주기로 천천히 회전
-                  · 흰 원판 위 사이렌 아이콘은 정지 (회전체와 분리)
-                  · 우상단/좌하단 sparkle dot 이 엇갈려 페이드인/아웃
-                  마음에 안 들면 ⬇ 이 블록을 주석 처리하고
-                  바로 아래 "이전 박동 디자인" 블록의 주석을 풀어 주세요.
+                  · 외곽 ring 이 1초 주기로 빨간 glow 와 함께 깜빡 (응급차
+                    경광등처럼 ON/OFF 점멸)
+                  · 가운데 흰 원판 + Siren 아이콘은 정지 (시각적 안정)
+                  · 우상단/좌하단 sparkle dot 도 동일한 1초 템포로 동기화
+                    (경광등이 "ON" 되는 순간 함께 반짝)
+                  마음에 안 들면 ⬇ 이 블록을 주석 처리하고 아래에 보존된
+                  "회전 + 반짝" 또는 "박동(pulse)" 블록 중 원하는 디자인의
+                  주석을 풀어서 사용하세요.
               ============================================================ */}
+              <div className="relative size-11 shrink-0">
+                {/* 외곽 경광등 글로우 — 1s 주기로 ON/OFF */}
+                <motion.div
+                  aria-hidden
+                  className="absolute inset-0 rounded-full bg-white"
+                  animate={{
+                    opacity: [0.35, 1, 0.35],
+                    boxShadow: [
+                      "0 0 0px 0px rgba(239,68,68,0)",
+                      "0 0 14px 5px rgba(239,68,68,0.9)",
+                      "0 0 0px 0px rgba(239,68,68,0)",
+                    ],
+                  }}
+                  transition={{ duration: 1.0, repeat: Infinity, ease: "easeInOut" }}
+                />
+                {/* 가운데 아이콘 — 정지 */}
+                <div className="absolute inset-[3px] grid place-items-center rounded-full bg-white text-primary shadow-xl">
+                  <Siren className="size-[18px]" strokeWidth={2.4} />
+                </div>
+                {/* sparkle: 우상단 — 같은 1s 템포, 경광등 ON 순간에 함께 반짝 */}
+                <motion.span
+                  aria-hidden
+                  className="absolute -right-1 -top-1 grid size-3 place-items-center"
+                  animate={{ opacity: [0, 1, 0], scale: [0.6, 1.15, 0.6] }}
+                  transition={{ duration: 1.0, repeat: Infinity, ease: "easeInOut" }}
+                >
+                  <Sparkles className="size-3 text-amber-300 drop-shadow-[0_0_4px_rgba(252,211,77,0.95)]" />
+                </motion.span>
+                {/* sparkle: 좌하단 — 같은 1s 템포 (동기화) */}
+                <motion.span
+                  aria-hidden
+                  className="absolute -bottom-0.5 -left-0.5 size-1.5 rounded-full bg-amber-200 shadow-[0_0_6px_rgba(253,230,138,0.95)]"
+                  animate={{ opacity: [0, 1, 0], scale: [0.4, 1, 0.4] }}
+                  transition={{ duration: 1.0, repeat: Infinity, ease: "easeInOut" }}
+                />
+              </div>
+              {/* ============================================================
+                  ▽ 대안 디자인 — 복원하려면 위 블록을 주석 처리하고
+                     아래에서 원하는 블록의 주석을 풀어 사용하세요.
+              ============================================================ */}
+              {/* 대안 1: 회전 + 반짝 (conic-gradient ring 회전)
               <div className="relative size-11 shrink-0">
                 <motion.div
                   aria-hidden
@@ -153,33 +197,9 @@ function HeroCard() {
                 <div className="absolute inset-[3px] grid place-items-center rounded-full bg-white text-primary shadow-xl">
                   <Siren className="size-[18px]" strokeWidth={2.4} />
                 </div>
-                {/* sparkle: 우상단 큰 별 */}
-                <motion.span
-                  aria-hidden
-                  className="absolute -right-1 -top-1 grid size-3 place-items-center"
-                  animate={{ opacity: [0, 1, 0], scale: [0.6, 1.1, 0.6] }}
-                  transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-                >
-                  <Sparkles className="size-3 text-amber-300 drop-shadow-[0_0_4px_rgba(252,211,77,0.9)]" />
-                </motion.span>
-                {/* sparkle: 좌하단 작은 점 */}
-                <motion.span
-                  aria-hidden
-                  className="absolute -bottom-0.5 -left-0.5 size-1.5 rounded-full bg-amber-200 shadow-[0_0_6px_rgba(253,230,138,0.95)]"
-                  animate={{ opacity: [0, 1, 0], scale: [0.4, 1, 0.4] }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    delay: 0.6,
-                    ease: "easeInOut",
-                  }}
-                />
               </div>
-              {/* ============================================================
-                  ▽ 이전 박동(pulse) 디자인 — 복원하려면 위 블록을 주석
-                     처리하고 아래 주석을 풀어 사용하세요.
-              ============================================================ */}
-              {/*
+              */}
+              {/* 대안 2: 박동(pulse) — 가장 초기 디자인
               <motion.div
                 initial={{ scale: 0.95, opacity: 0.9 }}
                 animate={{ scale: [0.95, 1.05, 0.95] }}
