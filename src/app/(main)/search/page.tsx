@@ -284,29 +284,43 @@ export default function SearchPage() {
       {/* ===== 5) 제출 버튼 — 화면 맨 아래 floating =====
           사용자가 KTAS 가이드를 길게 스크롤해 보더라도 검색 액션은 항상
           thumb-zone 안쪽에 머물도록 화면에 고정한다. 하단 탭바(72px) 위 영역에
-          배치하고, 컨텐츠 가독성을 위해 반투명 배경 + blur 처리를 둔다. */}
+          배치한다.
+
+          ★ 사용자 요구: 버튼의 빨간색 이외의 하얀색 바탕은 투명하게 — 버튼
+            뒤편의 KTAS 카드가 그대로 비춰 보여야 "이 아래에 더 정보가 있다"
+            는 사실이 인지된다. 이를 위해:
+              1. 컨테이너 배경/border/blur 제거 (완전 투명)
+              2. pointer-events-none 으로 컨테이너의 빈 공간이 KTAS 카드 클릭/
+                 스크롤을 가로막지 않도록 한다 (실제 인터랙션은 버튼/안내칩
+                 자식에만 pointer-events-auto 로 다시 켠다)
+              3. 버튼 그림자는 강화해 floating 입체감 보장
+              4. 보조 안내 문구는 가독성 유지를 위해 작은 칩 배경만 부여 */}
       <div
-        className="fixed inset-x-0 z-30 border-t border-border/60 bg-bg/85 backdrop-blur-md"
+        className="pointer-events-none fixed inset-x-0 z-30"
         style={{
           bottom: "calc(72px + env(safe-area-inset-bottom))",
         }}
       >
         <div className="mx-auto w-full max-w-[520px] px-5 py-3">
-          <Button
-            size="xl"
-            fullWidth
-            disabled={!canSubmit}
-            loading={submitting}
-            onClick={handleSubmit}
-            leftIcon={<SearchIcon className="size-5" />}
-            rightIcon={<ArrowRight className="size-4" />}
-          >
-            가까운 응급실 찾기
-          </Button>
+          <div className="pointer-events-auto drop-shadow-[0_10px_24px_rgba(0,0,0,0.18)]">
+            <Button
+              size="xl"
+              fullWidth
+              disabled={!canSubmit}
+              loading={submitting}
+              onClick={handleSubmit}
+              leftIcon={<SearchIcon className="size-5" />}
+              rightIcon={<ArrowRight className="size-4" />}
+            >
+              가까운 응급실 찾기
+            </Button>
+          </div>
           {!canSubmit && (
-            <p className="mt-1.5 text-center text-[12px] text-text-subtle">
-              증상을 1개 이상 선택하면 검색할 수 있어요
-            </p>
+            <div className="mt-1.5 flex justify-center">
+              <span className="pointer-events-auto inline-flex rounded-full bg-bg/90 px-2.5 py-0.5 text-[12px] text-text-subtle shadow-[var(--shadow-sm)] backdrop-blur-sm">
+                증상을 1개 이상 선택하면 검색할 수 있어요
+              </span>
+            </div>
           )}
         </div>
       </div>
