@@ -535,8 +535,8 @@ function NewDispatchReportContent() {
           />
         </Section>
 
-        {/* Sticky bottom actions */}
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-bg/95 px-5 py-3 backdrop-blur">
+        {/* Sticky bottom actions — BottomNav 보다 항상 위에 떠야 한다 */}
+        <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-bg/95 px-5 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 backdrop-blur">
           <div className="mx-auto max-w-[640px]">
             {saveError && (
               <p className="mb-2 rounded-[var(--radius-sm)] bg-status-full-soft px-3 py-2 text-[12px] text-status-full">

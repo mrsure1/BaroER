@@ -28,6 +28,13 @@ const items: NavItem[] = [
 export function BottomNav() {
   const pathname = usePathname();
 
+  // 작성/문서 화면에서는 탭바가 fixed 저장 액션바를 가리므로 숨긴다.
+  // - /dispatch/new (리포트 작성/수정)
+  // - /dispatch/{id}  (리포트 문서 보기 — 인쇄용 단독 화면)
+  const hideOnDispatchDetail =
+    pathname.startsWith("/dispatch/") && pathname !== "/dispatch";
+  if (hideOnDispatchDetail) return null;
+
   return (
     <nav
       aria-label="주요 메뉴"
