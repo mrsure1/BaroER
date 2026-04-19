@@ -59,26 +59,15 @@ export default function HomePage() {
 
   return (
     <div className="mx-auto w-full max-w-[520px] px-5 pb-4 pt-[calc(env(safe-area-inset-top)+6px)]">
-      {/* Header — 의미 없는 알림 버튼 제거. 브랜드 로고만 유지. */}
-      <header className="flex items-center py-1.5">
+      {/* Header — 로고 + 짧은 카피 한 줄. greeting 섹션을 제거하고 동일 정보를
+          상단에 통합해 한 뷰포트 fold 안 콘텐츠 밀도를 높였다. */}
+      <header className="flex items-center gap-3 py-1.5">
         <Logo height={32} priority />
-      </header>
-
-      {/* Greeting */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.45 }}
-        className="mt-3"
-      >
-        <p className="text-[12px] font-medium text-text-muted">좋은 하루입니다 👋</p>
-        <h1 className="mt-0.5 text-[20px] font-bold leading-[1.2] tracking-tight text-text">
+        <p className="min-w-0 flex-1 truncate text-[12.5px] font-medium leading-snug text-text-muted">
           응급실이 필요할 때,{" "}
-          <span className="bg-gradient-to-r from-primary to-primary-hover bg-clip-text text-transparent">
-            바로 연결해 드릴게요.
-          </span>
-        </h1>
-      </motion.div>
+          <span className="font-semibold text-text">바로 연결해 드릴게요.</span>
+        </p>
+      </header>
 
       {/* Hero CTA */}
       <motion.div

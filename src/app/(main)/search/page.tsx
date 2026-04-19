@@ -148,7 +148,17 @@ export default function SearchPage() {
     <>
       <ScreenHeader title="환자 상태 평가" subtitle="증상을 선택하면 KTAS 중증도가 즉시 계산됩니다" back />
 
-      <div className="mx-auto w-full max-w-[520px] px-5 pb-6">
+      {/*
+        하단 floating 검색 버튼 영역(buttom 약 64px + 도움말 + 안전영역 + 하단탭바)
+        만큼 콘텐츠에 padding-bottom 을 줘 KTAS 카드가 버튼 뒤로 가려지지 않게 함.
+      */}
+      <div
+        className="mx-auto w-full max-w-[520px] px-5"
+        style={{
+          paddingBottom:
+            "calc(72px + env(safe-area-inset-bottom) + 92px)",
+        }}
+      >
         {/* ===== 1) 증상 선택 ===== */}
         <section className="mb-4">
           <SectionTitle icon={<Stethoscope className="size-3.5" />} label="주 증상" hint="복수 선택 가능" />
@@ -245,8 +255,43 @@ export default function SearchPage() {
           </div>
         </section>
 
-        {/* ===== 4) 제출 버튼 ===== */}
-        <div className="sticky bottom-[calc(72px+env(safe-area-inset-bottom)+12px)] z-10 mt-2">
+        {/* ===== 4) KTAS 중증도 + 응급조치 (제출 버튼 위) =====
+            증상이 선택되는 즉시 KTAS 뱃지와 응급조치 가이드를 환자 정보 아래에
+            바로 노출. 화면 하단의 floating 검색 버튼은 별도 컨테이너로 분리되어
+            언제든 thumb-zone 에서 호출 가능. */}
+        <AnimatePresence initial={false}>
+          {symptoms.length > 0 && (
+            <motion.section
+              key="ktas-card"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              className="mt-2 overflow-hidden"
+            >
+              <KtasCard
+                ktas={ktas}
+                audience={audience}
+                open={guidanceOpen}
+                onToggle={() => setGuidanceOpen((v) => !v)}
+                guidance={guidance}
+              />
+            </motion.section>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* ===== 5) 제출 버튼 — 화면 맨 아래 floating =====
+          사용자가 KTAS 가이드를 길게 스크롤해 보더라도 검색 액션은 항상
+          thumb-zone 안쪽에 머물도록 화면에 고정한다. 하단 탭바(72px) 위 영역에
+          배치하고, 컨텐츠 가독성을 위해 반투명 배경 + blur 처리를 둔다. */}
+      <div
+        className="fixed inset-x-0 z-30 border-t border-border/60 bg-bg/85 backdrop-blur-md"
+        style={{
+          bottom: "calc(72px + env(safe-area-inset-bottom))",
+        }}
+      >
+        <div className="mx-auto w-full max-w-[520px] px-5 py-3">
           <Button
             size="xl"
             fullWidth
@@ -264,31 +309,6 @@ export default function SearchPage() {
             </p>
           )}
         </div>
-
-        {/* ===== 5) KTAS 중증도 + 응급조치 (최하단) =====
-            검색 버튼은 항상 thumb-zone 안쪽에 있어야 하므로 KTAS 카드는
-            제출 버튼 **아래쪽** 으로 내려, 사용자가 응급조치 가이드를 자세히
-            살펴보더라도 검색 동작에 방해되지 않게 한다. */}
-        <AnimatePresence initial={false}>
-          {symptoms.length > 0 && (
-            <motion.section
-              key="ktas-card"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-              className="mt-5 overflow-hidden"
-            >
-              <KtasCard
-                ktas={ktas}
-                audience={audience}
-                open={guidanceOpen}
-                onToggle={() => setGuidanceOpen((v) => !v)}
-                guidance={guidance}
-              />
-            </motion.section>
-          )}
-        </AnimatePresence>
       </div>
     </>
   );
