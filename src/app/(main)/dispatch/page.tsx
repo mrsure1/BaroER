@@ -381,9 +381,12 @@ function DispatchReportsList({
   onFilterChange: (next: Partial<{ from: string; to: string; q: string }>) => void;
 }) {
   // 비-구급대원에게는 작성 진입조차 허용하지 않고 안내 카드만 노출.
+  // 안내문과 링크를 분리해, "프로필 → 구급대원 전환" 링크 한 단어/한 줄을
+  // 보장한다. 카드 좌우 패딩을 px-4 로 축소해 360px 모바일에서도 한국어
+  // 폰트 기준으로 nowrap 가 깨지지 않게 폭을 확보한다.
   if (!isParamedic) {
     return (
-      <Card className="px-6 py-10 text-center">
+      <Card className="px-4 py-10 text-center">
         <div className="mx-auto grid size-14 place-items-center rounded-full bg-surface-2 text-text-muted">
           <ClipboardList className="size-6" />
         </div>
@@ -391,11 +394,14 @@ function DispatchReportsList({
           구급대원 전용 기능이에요
         </p>
         <p className="mt-1.5 text-[12.5px] leading-relaxed text-text-muted">
-          구급활동일지 작성·열람은 구급대원 계정에서만 가능해요.{" "}
-          <Link href="/settings/profile" className="font-semibold text-primary">
-            프로필에서 구급대원으로 전환
-          </Link>
+          구급활동일지 작성·열람은 구급대원 계정에서만 가능해요.
         </p>
+        <Link
+          href="/settings/profile"
+          className="mt-3 inline-block whitespace-nowrap text-[12.5px] font-semibold text-primary"
+        >
+          프로필 → 구급대원 전환
+        </Link>
       </Card>
     );
   }

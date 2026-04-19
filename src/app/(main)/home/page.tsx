@@ -4,9 +4,12 @@ import Link from "next/link";
 import { motion } from "motion/react";
 import {
   Activity,
+  Building2,
   ChevronRight,
   Clock,
+  Database,
   FilePlus2,
+  Flame,
   HeartPulse,
   History,
   Hospital,
@@ -14,6 +17,7 @@ import {
   ShieldCheck,
   Siren,
   Sparkles,
+  Stethoscope,
   Wifi,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -401,37 +405,73 @@ function SafetyGuide({ isParamedic }: { isParamedic: boolean }) {
  * "데이터 제공 / 참조 / 지도" 라는 중립적 라벨만 사용한다.
  */
 /**
- * 한 화면(fold) 안에 들어가도록 4줄 → 2줄로 압축한 버전.
- * - "지도" 라인은 NaverMap SDK 자체 워터마크(© NAVER) 가 지도에 자동 표시되어
- *   네이버 클라우드 플랫폼 약관상 별도 텍스트 attribution 없이도 무방.
- * - 데이터 제공처(공공데이터포털·E-Gen·보건복지부)와 참조(KTAS·소방청 119)는
- *   한 줄로 합쳐 "데이터·참조 / 면책" 2줄 구성으로 단순화.
+ * 한 화면(fold) 안에 들어가도록 압축한 데이터 출처 + 의료 면책 푸터.
+ *
+ * - 각 출처에는 디자인 시스템과 일관된 모노크롬(흑백) 카테고리 아이콘만
+ *   부착한다. 실제 기관 BI/CI(공공데이터포털·E-Gen·보건복지부·KTAS·소방청)
+ *   는 별도 사용 신청 + 색상·여백·크기 가이드 준수가 필요해, 단순 출처
+ *   표기 목적의 본 화면에서는 lucide 모노크롬 심볼로 대체한다 (저작권 안전).
+ * - "지도" 라인은 NaverMap SDK 가 지도 위에 © NAVER 워터마크를 자동 표시
+ *   하므로 약관상 별도 텍스트 attribution 없이도 무방.
  */
+const SOURCES = [
+  {
+    href: "https://www.data.go.kr",
+    label: "공공데이터포털",
+    short: "공공데이터포털",
+    Icon: Database,
+  },
+  {
+    href: "https://www.e-gen.or.kr",
+    label: "중앙응급의료센터 E-Gen",
+    short: "E-Gen",
+    Icon: Activity,
+  },
+  {
+    href: "https://www.mohw.go.kr",
+    label: "보건복지부",
+    short: "보건복지부",
+    Icon: Building2,
+  },
+  {
+    href: "https://www.ktas.org",
+    label: "대한응급의학회 KTAS",
+    short: "KTAS",
+    Icon: Stethoscope,
+  },
+  {
+    href: "https://www.nfa.go.kr",
+    label: "소방청 119",
+    short: "119",
+    Icon: Flame,
+  },
+] as const;
+
 function Footer() {
   return (
-    <footer className="mt-auto pt-1.5 text-center">
+    <footer className="mt-auto pt-0.5 text-center">
       <div className="space-y-0.5 text-[10px] leading-tight text-text-subtle">
-        <p>
-          <FooterLabel>데이터</FooterLabel>
-          <Ext href="https://www.data.go.kr" label="공공데이터포털">
-            공공데이터포털
-          </Ext>
-          <Sep />
-          <Ext href="https://www.e-gen.or.kr" label="중앙응급의료센터 E-Gen">
-            E-Gen
-          </Ext>
-          <Sep />
-          <Ext href="https://www.mohw.go.kr" label="보건복지부">
-            보건복지부
-          </Ext>
-          <Sep />
-          <Ext href="https://www.ktas.org" label="대한응급의학회 KTAS">
-            KTAS
-          </Ext>
-          <Sep />
-          <Ext href="https://www.nfa.go.kr" label="소방청">
-            소방청 119
-          </Ext>
+        <p className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5">
+          <span className="font-semibold text-text-muted">데이터</span>
+          {SOURCES.map(({ href, label, short, Icon }) => (
+            <span key={href} className="inline-flex items-center gap-1">
+              <span className="text-text-subtle/60">·</span>
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`${label} 새 창에서 열기`}
+                className="inline-flex items-center gap-1 underline-offset-2 transition-colors hover:text-text hover:underline"
+              >
+                <Icon
+                  className="size-3 text-text-muted"
+                  strokeWidth={2}
+                  aria-hidden
+                />
+                <span>{short}</span>
+              </a>
+            </span>
+          ))}
         </p>
         <p className="text-text-subtle/80">
           본 앱은 의료 행위를 대체하지 않습니다 ·{" "}
@@ -439,41 +479,6 @@ function Footer() {
         </p>
       </div>
     </footer>
-  );
-}
-
-function FooterLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <span className="font-semibold text-text-muted">{children}</span>
-      <span className="mx-1.5 text-text-subtle/60">·</span>
-    </>
-  );
-}
-
-function Sep() {
-  return <span className="mx-1 text-text-subtle/60">·</span>;
-}
-
-function Ext({
-  href,
-  label,
-  children,
-}: {
-  href: string;
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label={`${label} 새 창에서 열기`}
-      className="underline-offset-2 transition-colors hover:text-primary hover:underline"
-    >
-      {children}
-    </a>
   );
 }
 
