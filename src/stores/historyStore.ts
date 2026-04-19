@@ -13,6 +13,11 @@ export interface HistoryEntry {
   ageBand: AgeBand | null;
   notes: string;
   coords: { lat: number; lng: number; fallback?: boolean } | null;
+  /**
+   * 좌표의 한글 주소(역지오코딩 결과). 미확인 시 null — 카드 UI 에서는
+   * 좌표 폴백으로 대체 표시된다.
+   */
+  address?: string | null;
   /** Top result snapshot — display only */
   topResults: Pick<Hospital, "id" | "name" | "etaMin" | "distanceKm" | "capacity">[];
 }
@@ -46,18 +51,21 @@ export const useHistoryStore = create<HistoryState>()(
       name: "baroer-search-history",
       storage: createJSONStorage(() => localStorage),
       // v2: replaced numeric `age` with `ageBand` enum.
-      version: 2,
+      // v3: added optional `address` (reverse-geocoded Korean address).
+      version: 3,
       migrate: (persisted, fromVersion) => {
-        // From v1: drop the legacy numeric `age` and seed `ageBand: null`.
-        if (fromVersion < 2 && persisted && typeof persisted === "object") {
-          const prev = persisted as { entries?: Array<Record<string, unknown>> };
-          const entries = (prev.entries ?? []).map(({ age: _drop, ...rest }) => ({
-            ...rest,
-            ageBand: null,
-          }));
-          return { entries } as HistoryState;
+        if (!persisted || typeof persisted !== "object") return persisted as HistoryState;
+        let entries = (persisted as { entries?: Array<Record<string, unknown>> }).entries ?? [];
+        if (fromVersion < 2) {
+          // v1 → v2: drop numeric `age`, seed `ageBand: null`.
+          entries = entries.map(({ age: _drop, ...rest }) => ({ ...rest, ageBand: null }));
         }
-        return persisted as HistoryState;
+        if (fromVersion < 3) {
+          // v2 → v3: add address (null) — 기존 레코드는 좌표로만 표시.
+          entries = entries.map((e) => ({ address: null, ...e }));
+        }
+        // migrate 는 저장 대상 state shape 만 반환 — 타입은 partial 로 안전하게.
+        return { entries } as unknown as HistoryState;
       },
     },
   ),

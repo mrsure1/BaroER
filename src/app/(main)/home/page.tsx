@@ -2,20 +2,61 @@
 
 import Link from "next/link";
 import { motion } from "motion/react";
-import { ChevronRight, History, Phone, Siren, Sparkles } from "lucide-react";
+import {
+  ChevronRight,
+  FilePlus2,
+  History,
+  Phone,
+  Siren,
+  Sparkles,
+} from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Logo } from "@/components/ui/Logo";
-
-const quickActions = [
-  { href: "tel:119", label: "119", sub: "긴급 전화", Icon: Phone, tone: "danger" as const },
-  { href: "/dispatch", label: "최근 기록", sub: "내 검색 이력", Icon: History, tone: "neutral" as const },
-];
+import { useAuthStore } from "@/stores/authStore";
 
 // 홈 화면 컴팩션 원칙 — iPhone SE(667pt) 기준 한 뷰포트에 Header · Greeting ·
 // Hero CTA · Quick actions · Tip 카드까지 모두 들어오도록 각 섹션의 margin/
 // padding, 폰트 크기, 히어로 내부 gap 을 단계적으로 축소. "시작하기" 등
 // 핵심 인터랙션이 fold 아래로 내려가지 않는 것이 목표.
 export default function HomePage() {
+  const user = useAuthStore((s) => s.user);
+  const isParamedic = user?.userType === "PARAMEDIC";
+
+  // 퀵 액션 슬롯 — 구급대원은 "리포트 작성" 을, 일반 사용자는 "최근 기록" 을.
+  const quickActions = isParamedic
+    ? [
+        {
+          href: "tel:119",
+          label: "119",
+          sub: "긴급 전화",
+          Icon: Phone,
+          tone: "danger" as const,
+        },
+        {
+          href: "/dispatch/new",
+          label: "리포트 작성",
+          sub: "구급활동일지",
+          Icon: FilePlus2,
+          tone: "neutral" as const,
+        },
+      ]
+    : [
+        {
+          href: "tel:119",
+          label: "119",
+          sub: "긴급 전화",
+          Icon: Phone,
+          tone: "danger" as const,
+        },
+        {
+          href: "/dispatch",
+          label: "최근 기록",
+          sub: "내 검색 이력",
+          Icon: History,
+          tone: "neutral" as const,
+        },
+      ];
+
   return (
     <div className="mx-auto w-full max-w-[520px] px-5 pb-4 pt-[calc(env(safe-area-inset-top)+6px)]">
       {/* Header — 의미 없는 알림 버튼 제거. 브랜드 로고만 유지. */}

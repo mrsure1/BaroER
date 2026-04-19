@@ -16,10 +16,18 @@ export interface NaverSize {
   width: number;
   height: number;
 }
+export interface NaverLatLngBounds {
+  extend(latlng: NaverLatLng): void;
+}
 export interface NaverMapInstance {
   setCenter(latlng: NaverLatLng): void;
   setZoom(z: number, useEffect?: boolean): void;
   setSize?(size: NaverSize): void;
+  /** padding 은 네이버 SDK v3 에서 `{ top, right, bottom, left }` 형태의 객체를 받는다. */
+  fitBounds?(
+    bounds: NaverLatLngBounds,
+    padding?: number | { top: number; right: number; bottom: number; left: number },
+  ): void;
   destroy(): void;
 }
 export interface NaverMarkerInstance {
@@ -50,6 +58,7 @@ export interface NaverMapsNamespace {
   }) => NaverMarkerInstance;
   Point: new (x: number, y: number) => NaverPoint;
   Size: new (width: number, height: number) => NaverSize;
+  LatLngBounds: new (sw: NaverLatLng, ne: NaverLatLng) => NaverLatLngBounds;
   Event: {
     addListener: (
       target: NaverMarkerInstance | NaverMapInstance,

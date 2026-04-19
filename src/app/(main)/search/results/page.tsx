@@ -30,6 +30,7 @@ import { NaverMap } from "@/components/maps/NaverMap";
 import { loadNaverMaps } from "@/lib/naverMaps";
 import { CAPACITY_META } from "@/lib/mockHospitals";
 import { fetchNearbyHospitals, fetchHospitalTotals } from "@/services/hospitals";
+import { reverseGeocode } from "@/services/geocode";
 import { openNaverDirections } from "@/lib/naverDirections";
 import { useSearchStore, type GeoReason } from "@/stores/searchStore";
 import { useHistoryStore } from "@/stores/historyStore";
@@ -74,6 +75,14 @@ export default function SearchResultsPage() {
   useEffect(() => {
     loadNaverMaps().catch(() => undefined);
   }, []);
+
+  // view 전환 시 스크롤을 상단으로 리셋. 리스트에서 스크롤을 내려둔 상태로
+  // 지도 탭을 눌렀을 때 지도 뷰의 실제 콘텐츠 길이를 넘어선 빈 여백이
+  // 보이는 UX 이슈를 방지한다.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, [view]);
 
   const enabled = Boolean(coords);
 
@@ -122,26 +131,45 @@ export default function SearchResultsPage() {
   const availableCount = hospitals.filter((h) => h.capacity === "available").length;
 
   // Save the search outcome to local history exactly once when results arrive.
+  // Reverse-geocoding 은 race 없이 결과가 도착하면 address 필드를 채우는 방식.
   const [savedKey, setSavedKey] = useState<string | null>(null);
   useEffect(() => {
     if (!coords || !data || data.hospitals.length === 0) return;
     const key = `${coords.lat},${coords.lng}|${data.generatedAt}`;
     if (key === savedKey) return;
-    addHistory({
-      symptoms,
-      gender,
-      ageBand,
-      notes,
-      coords,
-      topResults: data.hospitals.slice(0, 3).map((h) => ({
-        id: h.id,
-        name: h.name,
-        etaMin: h.etaMin,
-        distanceKm: h.distanceKm,
-        capacity: h.capacity,
-      })),
-    });
-    setSavedKey(key);
+
+    let cancelled = false;
+    // 역지오코딩을 먼저 시도하고, 실패해도 즉시 저장 — 사용자의 기록 저장을
+    // 네트워크 주소 조회에 블로킹시키지 않는다.
+    (async () => {
+      let address: string | null = null;
+      try {
+        address = await reverseGeocode(coords.lat, coords.lng);
+      } catch {
+        /* ignore — address 는 null 로 둔다 */
+      }
+      if (cancelled) return;
+      addHistory({
+        symptoms,
+        gender,
+        ageBand,
+        notes,
+        coords,
+        address,
+        topResults: data.hospitals.slice(0, 3).map((h) => ({
+          id: h.id,
+          name: h.name,
+          etaMin: h.etaMin,
+          distanceKm: h.distanceKm,
+          capacity: h.capacity,
+        })),
+      });
+      setSavedKey(key);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [coords, data, symptoms, gender, ageBand, notes, addHistory, savedKey]);
 
   // No coords → user landed here directly. Bounce to /search.

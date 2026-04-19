@@ -13,8 +13,11 @@ const PUBLIC_PATHS = new Set<string>([
   "/register",
   "/verify-email",
   "/forgot-password",
+  "/help",
 ]);
-const PUBLIC_PREFIXES = ["/auth/"]; // /auth/callback 등
+// /auth/callback, /legal/privacy 등 접근 제한이 필요 없는 prefix.
+// 법률·도움말은 비로그인 상태의 사용자도 열람 가능해야 함.
+const PUBLIC_PREFIXES = ["/auth/", "/legal/"];
 
 /**
  * 인증된 사용자도 통과시켜야 하는 경로.
@@ -22,7 +25,12 @@ const PUBLIC_PREFIXES = ["/auth/"]; // /auth/callback 등
  * "이미 로그인됨 → /home 강제 리다이렉트" 가드에 걸려 영영 로그아웃이 안 된다.
  * 따라서 PUBLIC_PATHS 가 아닌 별도 화이트리스트로 분리해 가드를 모두 우회.
  */
-const ALWAYS_ALLOW = new Set<string>(["/logout"]);
+// /reset-password 는 recovery 세션(=로그인 세션) 상태로 접근해야 하므로,
+// PUBLIC 경로로 두면 "이미 로그인 → /home 리다이렉트" 에 막힌다. 반대로 보호
+// 경로로 두면 비로그인 상태에서도 접근 가능해야 하는 forgot-password 플로우와
+// 충돌. 결국 '가드 전면 우회' 가 정답 — recovery 세션 유무는 페이지 내부에서
+// supabase.auth.getUser() 로 직접 검증한다.
+const ALWAYS_ALLOW = new Set<string>(["/logout", "/reset-password"]);
 
 function isPublic(pathname: string): boolean {
   if (PUBLIC_PATHS.has(pathname)) return true;

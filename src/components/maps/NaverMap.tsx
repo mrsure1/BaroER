@@ -91,6 +91,10 @@ export function NaverMap({
   const userMarkerRef = useRef<NaverMarkerInstance | null>(null);
   const resizeObsRef = useRef<ResizeObserver | null>(null);
   const tileWatchRef = useRef<number | null>(null);
+  // 초기 fit-bounds 를 "이 center 좌표에 대해 한 번만" 수행하기 위한 가드.
+  // 사용자가 지도를 팬/줌한 이후에는 병원 리스트가 바뀌어도 자동으로 줌을
+  // 재조정하지 않는다. coords 변경(새 검색) 시엔 키가 달라져 다시 1회 fit.
+  const fitDoneForRef = useRef<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [diag, setDiag] = useState<DiagStage>("init");
   const [containerSize, setContainerSize] = useState<{
@@ -260,6 +264,35 @@ export function NaverMap({
         }
         return marker;
       });
+
+      // 검색 결과가 처음 도착했을 때 단 한 번 "내 위치 + 모든 병원" 이 한
+      // 화면에 담기도록 fit. 사용자가 이후에 직접 팬/줌한 걸 덮어쓰지 않게
+      // coords 기준 키를 저장해두고 동일 키에서는 재실행하지 않는다.
+      const fitKey = `${center.lat.toFixed(5)},${center.lng.toFixed(5)}`;
+      if (
+        hospitals.length > 0 &&
+        fitDoneForRef.current !== fitKey &&
+        typeof mapRef.current.fitBounds === "function"
+      ) {
+        try {
+          const userLL = new maps.LatLng(center.lat, center.lng);
+          const bounds = new maps.LatLngBounds(userLL, userLL);
+          for (const h of hospitals) {
+            bounds.extend(new maps.LatLng(h.lat, h.lng));
+          }
+          // 네이버 지도 SDK 는 padding 을 객체로 받는다 (숫자로 넣으면 무시됨).
+          // 상단은 선택 병원 요약 overlay, 하단은 디버그 칩 공간을 고려해 여유.
+          mapRef.current.fitBounds(bounds, {
+            top: 56,
+            right: 40,
+            bottom: 80,
+            left: 40,
+          });
+          fitDoneForRef.current = fitKey;
+        } catch {
+          /* fit 실패는 치명적이지 않음 — 기본 줌으로 표시 */
+        }
+      }
     };
 
     const ready = window.naver?.maps;
@@ -277,7 +310,7 @@ export function NaverMap({
     return () => {
       cancelled = true;
     };
-  }, [hospitals, selectedId, onSelect]);
+  }, [hospitals, selectedId, onSelect, center.lat, center.lng]);
 
   if (error || !NAVER_MAP_CLIENT_ID) {
     return (

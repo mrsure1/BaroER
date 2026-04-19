@@ -146,6 +146,30 @@ export async function resendVerificationEmail(email: string) {
 }
 
 /**
+ * 비밀번호 재설정 메일 발송.
+ * 메일 링크 클릭 → /auth/callback (type=recovery) → /reset-password 로 리다이렉트.
+ * 리셋 페이지에서 `updatePassword()` 를 호출해 새 비밀번호로 교체한다.
+ */
+export async function sendPasswordResetEmail(email: string) {
+  const supabase = createClient();
+  const redirectTo =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/auth/callback?next=/reset-password`
+      : undefined;
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo,
+  });
+  if (error) throw error;
+}
+
+/** 로그인된(또는 recovery 세션) 사용자의 비밀번호를 교체한다. */
+export async function updatePassword(newPassword: string) {
+  const supabase = createClient();
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) throw error;
+}
+
+/**
  * Supabase 인증 상태 → Zustand store 동기화. 앱 루트에서 1회 호출.
  * 반환값은 cleanup 함수.
  */
