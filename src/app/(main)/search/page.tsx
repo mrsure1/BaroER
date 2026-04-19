@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import {
   ArrowRight,
+  ChevronDown,
   Mic,
   MicOff,
   Search as SearchIcon,
@@ -13,17 +14,21 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
-import { Input } from "@/components/ui/Input";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { ScreenHeader } from "@/components/common/ScreenHeader";
-import { SYMPTOMS, useSearchStore, type Gender } from "@/stores/searchStore";
+import {
+  AGE_BANDS,
+  SYMPTOMS,
+  useSearchStore,
+  type AgeBand,
+  type Gender,
+} from "@/stores/searchStore";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { getCurrentCoords } from "@/hooks/useGeolocation";
 
 const genderOptions = [
   { value: "M" as const, label: "남성" },
   { value: "F" as const, label: "여성" },
-  { value: "U" as const, label: "선택안함" },
 ] satisfies ReadonlyArray<{ value: Gender; label: string }>;
 
 export default function SearchPage() {
@@ -32,8 +37,8 @@ export default function SearchPage() {
   const toggleSymptom = useSearchStore((s) => s.toggleSymptom);
   const gender = useSearchStore((s) => s.gender);
   const setGender = useSearchStore((s) => s.setGender);
-  const age = useSearchStore((s) => s.age);
-  const setAge = useSearchStore((s) => s.setAge);
+  const ageBand = useSearchStore((s) => s.ageBand);
+  const setAgeBand = useSearchStore((s) => s.setAgeBand);
   const notes = useSearchStore((s) => s.notes);
   const setNotes = useSearchStore((s) => s.setNotes);
   const setCoords = useSearchStore((s) => s.setCoords);
@@ -74,7 +79,12 @@ export default function SearchPage() {
     setSubmitting(true);
     try {
       const coords = await getCurrentCoords();
-      setCoords({ lat: coords.lat, lng: coords.lng, fallback: coords.fallback });
+      setCoords({
+        lat: coords.lat,
+        lng: coords.lng,
+        fallback: coords.fallback,
+        reason: coords.reason,
+      });
       router.push("/search/results");
     } finally {
       setSubmitting(false);
@@ -107,55 +117,25 @@ export default function SearchPage() {
           )}
         </AnimatePresence>
 
-        {/* Symptom chips */}
+        {/* Symptom chips — uniform 3-column grid */}
         <Section title="증상 선택" subtitle="해당하는 항목을 모두 선택해 주세요 (복수 선택)">
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {SYMPTOMS.map((s) => {
               const active = symptoms.includes(s.id);
               return (
                 <Chip
                   key={s.id}
                   active={active}
-                  showCheckOnActive
                   onClick={() => toggleSymptom(s.id)}
                   aria-pressed={active}
+                  className="w-full justify-center px-2 text-[13px]"
                 >
                   <span className="mr-1" aria-hidden>{s.emoji}</span>
-                  {s.label}
+                  <span className="truncate">{s.label}</span>
                 </Chip>
               );
             })}
           </div>
-        </Section>
-
-        {/* Gender */}
-        <Section title="성별">
-          <SegmentedControl
-            options={genderOptions}
-            value={gender ?? "U"}
-            onChange={setGender}
-            ariaLabel="성별 선택"
-            fullWidth
-          />
-        </Section>
-
-        {/* Age */}
-        <Section title="나이">
-          <Input
-            type="number"
-            inputMode="numeric"
-            placeholder="예: 35"
-            value={age ?? ""}
-            onChange={(e) => {
-              const v = e.target.value;
-              setAge(v === "" ? null : Math.max(0, Math.min(120, Number(v))));
-            }}
-            min={0}
-            max={120}
-            rightSlot={
-              <span className="px-2 text-[13px] font-medium text-text-subtle">세</span>
-            }
-          />
         </Section>
 
         {/* Notes + Voice */}
@@ -203,6 +183,29 @@ export default function SearchPage() {
                   : "이 브라우저는 음성 인식을 지원하지 않아요."}
           </p>
         </Section>
+
+        {/* Gender + Age band — side-by-side */}
+        <div className="mb-6 grid grid-cols-2 gap-3">
+          <div>
+            <header className="mb-2.5 px-0.5">
+              <h2 className="text-[15px] font-semibold text-text">성별</h2>
+            </header>
+            <SegmentedControl
+              options={genderOptions}
+              value={gender}
+              onChange={setGender}
+              ariaLabel="성별 선택"
+              tone="primary"
+              fullWidth
+            />
+          </div>
+          <div>
+            <header className="mb-2.5 px-0.5">
+              <h2 className="text-[15px] font-semibold text-text">연령대</h2>
+            </header>
+            <AgeBandSelect value={ageBand} onChange={setAgeBand} />
+          </div>
+        </div>
 
         {/* Sticky submit */}
         <motion.div
@@ -252,5 +255,63 @@ function Section({
       </header>
       {children}
     </section>
+  );
+}
+
+function AgeBandSelect({
+  value,
+  onChange,
+}: {
+  value: AgeBand | null;
+  onChange: (v: AgeBand | null) => void;
+}) {
+  const selected = value ? AGE_BANDS.find((b) => b.value === value) ?? null : null;
+  return (
+    <div className="relative">
+      {/*
+        외부 wrapper 는 SegmentedControl(border + p-1 + 내부 h-11) 과 동일한 구조로 두어
+        성별/연령대 두 컨트롤의 총 세로 높이(약 54px) 가 정확히 일치하도록 한다.
+      */}
+      <div
+        className={
+          "flex w-full items-center rounded-full border border-border bg-surface-2 p-1 transition-colors focus-within:border-primary focus-within:shadow-[var(--shadow-glow)]"
+        }
+      >
+        {/* SegmentedControl 의 active thumb 와 같은 높이/모양의 inner surface. */}
+        <div className="flex h-11 w-full items-center gap-2 rounded-full bg-bg px-3.5 text-[14px] text-text shadow-[var(--shadow-sm)]">
+          <span className="flex-1 truncate">
+            {selected ? (
+              <span className="font-medium">{selected.label}</span>
+            ) : (
+              <span className="text-text-subtle">선택</span>
+            )}
+          </span>
+          <ChevronDown className="size-4 shrink-0 text-text-muted" aria-hidden />
+        </div>
+      </div>
+      {/*
+        Native select overlay — gives us the OS-native picker on mobile.
+        opacity-0 hides the closed control while letting the OS-rendered
+        popup appear. We intentionally do NOT set color:transparent here,
+        because Chrome inherits that into the dropdown options and made
+        the option text invisible against the popup background.
+      */}
+      <select
+        aria-label="연령대 선택"
+        value={value ?? ""}
+        onChange={(e) => {
+          const v = e.target.value;
+          onChange(v === "" ? null : (v as AgeBand));
+        }}
+        className="absolute inset-0 h-full w-full cursor-pointer appearance-none border-0 bg-transparent opacity-0 focus:outline-none"
+      >
+        <option value="">선택</option>
+        {AGE_BANDS.map((b) => (
+          <option key={b.value} value={b.value}>
+            {b.label} · {b.range}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 }

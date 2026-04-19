@@ -4,7 +4,7 @@
  * the next iteration.
  */
 
-export type CapacityLevel = "available" | "busy" | "full";
+export type CapacityLevel = "available" | "busy" | "full" | "unknown";
 
 export interface MockHospital {
   id: string;
@@ -109,5 +109,11 @@ export const CAPACITY_META: Record<
     tone: "text-status-full bg-status-full-soft",
     ring: "ring-status-full/30",
     dot: "bg-status-full",
+  },
+  unknown: {
+    label: "정보 없음",
+    tone: "text-text-muted bg-surface-2",
+    ring: "ring-border-strong/40",
+    dot: "bg-text-subtle",
   },
 };

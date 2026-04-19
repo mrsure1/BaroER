@@ -5,7 +5,6 @@ import { motion } from "motion/react";
 import {
   Activity,
   ChevronRight,
-  Clock,
   History,
   Phone,
   Siren,
@@ -131,34 +130,12 @@ export default function HomePage() {
         ))}
       </motion.section>
 
-      {/* Live status strip */}
+      {/* Tip card */}
       <motion.section
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.45, delay: 0.26 }}
         className="mt-5"
-      >
-        <Card className="flex items-center justify-between gap-3 p-4">
-          <div className="flex items-center gap-3">
-            <span className="relative grid size-10 place-items-center rounded-full bg-status-available-soft text-status-available">
-              <span className="absolute inset-0 animate-ping rounded-full bg-status-available/30" />
-              <Clock className="relative size-[18px]" />
-            </span>
-            <div>
-              <p className="text-[12.5px] font-medium text-text-muted">실시간 공공데이터</p>
-              <p className="text-[14.5px] font-semibold text-text">방금 업데이트됨</p>
-            </div>
-          </div>
-          <ChevronRight className="size-5 text-text-subtle" />
-        </Card>
-      </motion.section>
-
-      {/* Tip card */}
-      <motion.section
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.45, delay: 0.34 }}
-        className="mt-4"
       >
         <Card className="border-dashed border-border-strong bg-surface p-4">
           <p className="text-[12.5px] font-semibold uppercase tracking-wider text-accent">

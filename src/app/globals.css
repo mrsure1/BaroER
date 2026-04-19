@@ -149,6 +149,13 @@ textarea {
   font-size: 16px;
 }
 
+/* native <select> 의 드롭다운 옵션 가독성 보장 — 일부 브라우저에서
+   투명 처리한 select 의 색상이 옵션에 상속되어 안 보이는 문제 방지 */
+option {
+  color: rgb(var(--color-text));
+  background-color: rgb(var(--color-bg));
+}
+
 /* 스크롤바 slim */
 ::-webkit-scrollbar {
   width: 10px;

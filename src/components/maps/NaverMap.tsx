@@ -6,6 +6,8 @@ import { Card } from "@/components/ui/Card";
 import {
   loadNaverMaps,
   NAVER_MAP_CLIENT_ID,
+  onNaverAuthFailure,
+  type NaverLatLng,
   type NaverMapInstance,
   type NaverMarkerInstance,
 } from "@/lib/naverMaps";
@@ -39,31 +41,93 @@ function pinHTML(label: string, color: string, active: boolean) {
   `;
 }
 
+/**
+ * 사용자 현재 위치 마커 — 구글/네이버맵 표준 스타일.
+ * 가운데 파란 점 + 흰 외곽 + 펄스 링(SVG <animate> 로 애니메이션).
+ * 캔버스 56×56, 중심(28,28) 에 anchor 를 맞춘다.
+ */
+const USER_LOC_HTML = `
+<div style="position:relative;width:56px;height:56px;pointer-events:none;">
+  <svg width="56" height="56" viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg" style="display:block;">
+    <circle cx="28" cy="28" r="10" fill="#3b82f6" fill-opacity="0.18">
+      <animate attributeName="r" values="10;26;10" dur="2s" repeatCount="indefinite" />
+      <animate attributeName="fill-opacity" values="0.35;0;0.35" dur="2s" repeatCount="indefinite" />
+    </circle>
+    <circle cx="28" cy="28" r="10" fill="#ffffff" />
+    <circle cx="28" cy="28" r="7" fill="#3b82f6" />
+  </svg>
+</div>
+`;
+
+/**
+ * 진단 단계. 모바일에선 devtools 를 못 보니 화면에 직접 노출해서
+ * "어디서 멈췄는지" 를 사용자가 바로 알 수 있게 한다.
+ */
+type DiagStage =
+  | "init"
+  | "sdk-loading"
+  | "sdk-loaded"
+  | "map-created"
+  | "tiles-ok"
+  | "auth-failed"
+  | "load-error"
+  | "no-size";
+
 export function NaverMap({
   center,
   hospitals,
   selectedId,
   onSelect,
-  height = "60dvh",
+  // dvh 단위는 일부 안드로이드/구형 사파리에서 0으로 평가돼 컨테이너 높이가
+  // 사라지는 경우가 있어 호환성 가장 좋은 vh 를 기본으로 쓰고, 카드에
+  // minHeight 도 함께 걸어 컨테이너가 절대 0이 되지 않도록 한다.
+  height = "60vh",
 }: NaverMapProps) {
+  const cardRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<NaverMapInstance | null>(null);
   const markersRef = useRef<NaverMarkerInstance[]>([]);
+  const userMarkerRef = useRef<NaverMarkerInstance | null>(null);
+  const resizeObsRef = useRef<ResizeObserver | null>(null);
+  const tileWatchRef = useRef<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [diag, setDiag] = useState<DiagStage>("init");
+  const [containerSize, setContainerSize] = useState<{
+    w: number;
+    h: number;
+    cardH: number;
+  }>({ w: 0, h: 0, cardH: 0 });
 
   // Initialize the Naver map exactly once.
   useEffect(() => {
     if (!containerRef.current) return;
     if (!NAVER_MAP_CLIENT_ID) {
-      setError("Naver 지도 클라이언트 ID가 설정되어 있지 않아 placeholder가 표시됩니다.");
+      setError("NEXT_PUBLIC_NAVER_MAP_CLIENT_ID 가 설정되어 있지 않습니다.");
       return;
     }
     let cancelled = false;
+
+    // 네이버 지도 SDK 의 도메인 인증 실패 시 호출되는 전역 콜백.
+    // 등록되지 않은 도메인으로 접속하면 SDK 로드/Map 인스턴스 생성은 성공하지만
+    // 타일은 빈 회색으로 그려진다. 사용자가 원인을 알 수 있도록 메시지로 노출.
+    const offAuthFailure = onNaverAuthFailure(() => {
+      setDiag("auth-failed");
+      setError(
+        "네이버 클라우드 콘솔에 현재 접속한 도메인이 등록되어 있지 않습니다.\n" +
+          "Maps Application 의 'Web 서비스 URL' 에 " +
+          window.location.origin +
+          " 를 추가해 주세요.",
+      );
+    });
+
+    setDiag("sdk-loading");
     loadNaverMaps()
       .then((maps) => {
         if (cancelled || !containerRef.current) return;
+        setDiag("sdk-loaded");
+        const initialPos = new maps.LatLng(center.lat, center.lng);
         mapRef.current = new maps.Map(containerRef.current, {
-          center: new maps.LatLng(center.lat, center.lng),
+          center: initialPos,
           zoom: 13,
           zoomControl: true,
           mapDataControl: false,
@@ -71,55 +135,142 @@ export function NaverMap({
           scaleControl: false,
           tileTransition: true,
         });
+        setDiag("map-created");
+
+        // 사용자 위치 마커는 map 인스턴스가 만들어진 직후 동기적으로 생성한다.
+        // (별도 useEffect 에서 만들면 mount 시점엔 mapRef 가 아직 null 이라
+        //  early return 되어 마커가 영원히 안 그려지는 race 가 발생.)
+        userMarkerRef.current = new maps.Marker({
+          position: initialPos,
+          map: mapRef.current,
+          zIndex: 200,
+          icon: {
+            content: USER_LOC_HTML,
+            anchor: new maps.Point(28, 28),
+          },
+          title: "내 위치",
+        });
+
+        const forceResize = () => {
+          const el = containerRef.current;
+          const m = mapRef.current;
+          if (!el || !m || !m.setSize) return;
+          const w = el.clientWidth;
+          const h = el.clientHeight;
+          const cardH = cardRef.current?.clientHeight ?? 0;
+          setContainerSize({ w, h, cardH });
+          if (w > 0 && h > 0) m.setSize(new maps.Size(w, h));
+        };
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => {
+            forceResize();
+            window.setTimeout(forceResize, 300);
+          }),
+        );
+
+        if (typeof ResizeObserver !== "undefined" && containerRef.current) {
+          resizeObsRef.current = new ResizeObserver(forceResize);
+          resizeObsRef.current.observe(containerRef.current);
+        }
+
+        // 새 NCP Application Services Maps 는 도메인 미등록 시 authFailure 콜백을
+        // 호출하지 않는 케이스가 있다. 컨테이너 안에 실제 타일 <img> 가 그려졌는지
+        // 4 초 뒤 확인해서, 비어 있으면 인증/타일 로드 실패로 간주.
+        tileWatchRef.current = window.setTimeout(() => {
+          const el = containerRef.current;
+          if (!el) return;
+          const hasTile = el.querySelector("img, canvas") !== null;
+          if (hasTile) {
+            setDiag("tiles-ok");
+          } else if (el.clientWidth === 0 || el.clientHeight === 0) {
+            setDiag("no-size");
+          } else {
+            setDiag("auth-failed");
+            setError(
+              "지도 타일이 로드되지 않았습니다.\n" +
+                "네이버 클라우드 콘솔의 Maps Application →\n" +
+                "'Web 서비스 URL' 에 다음 도메인을 추가하세요:\n" +
+                window.location.origin,
+            );
+          }
+        }, 4000);
       })
       .catch((e: Error) => {
-        if (!cancelled) setError(e.message);
+        if (!cancelled) {
+          setDiag("load-error");
+          setError(e.message);
+        }
       });
     return () => {
       cancelled = true;
+      offAuthFailure();
+      if (tileWatchRef.current) {
+        window.clearTimeout(tileWatchRef.current);
+        tileWatchRef.current = null;
+      }
+      resizeObsRef.current?.disconnect();
+      resizeObsRef.current = null;
       markersRef.current.forEach((m) => m.setMap(null));
       markersRef.current = [];
+      userMarkerRef.current?.setMap(null);
+      userMarkerRef.current = null;
       mapRef.current?.destroy?.();
       mapRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Re-center when the origin changes.
+  // Re-center map + sync user-location marker whenever origin changes.
+  // (마커 자체는 map 초기화 useEffect 에서 동기적으로 생성된다.)
+  // SDK 가 이미 로드된 상태(거의 항상 그렇다)면 동기적으로 처리해 한 프레임 빨리.
   useEffect(() => {
     if (!mapRef.current) return;
-    loadNaverMaps()
-      .then((maps) => {
-        mapRef.current?.setCenter(new maps.LatLng(center.lat, center.lng));
-      })
-      .catch(() => undefined);
+    const maps = window.naver?.maps;
+    if (!maps) return; // 초기화 effect 가 아직 안 끝남 — 다음 사이클에 다시 이 effect 호출됨
+    const pos = new maps.LatLng(center.lat, center.lng);
+    mapRef.current.setCenter(pos);
+    const um = userMarkerRef.current as unknown as
+      | { setPosition: (p: NaverLatLng) => void }
+      | null;
+    um?.setPosition(pos);
   }, [center.lat, center.lng]);
 
-  // Sync markers.
+  // Sync hospital markers — 동기 path 우선, SDK 미로드 시에만 await.
   useEffect(() => {
     if (!mapRef.current) return;
+
+    const drawMarkers = (maps: typeof window.naver.maps) => {
+      if (!mapRef.current) return;
+      markersRef.current.forEach((m) => m.setMap(null));
+      markersRef.current = hospitals.map((h, i) => {
+        const active = selectedId === h.id;
+        const marker = new maps.Marker({
+          position: new maps.LatLng(h.lat, h.lng),
+          map: mapRef.current!,
+          zIndex: active ? 100 : 10 + i,
+          icon: {
+            content: pinHTML(String(i + 1), CAPACITY_COLOR[h.capacity], active),
+            anchor: new maps.Point(17, 42),
+          },
+          title: h.name,
+        });
+        if (onSelect) {
+          maps.Event.addListener(marker, "click", () => onSelect(h.id));
+        }
+        return marker;
+      });
+    };
+
+    const ready = window.naver?.maps;
+    if (ready) {
+      // Fast path: SDK 캐시 hit. 동기적으로 즉시 마커 그리기.
+      drawMarkers(ready);
+      return;
+    }
     let cancelled = false;
     loadNaverMaps()
       .then((maps) => {
-        if (cancelled || !mapRef.current) return;
-        markersRef.current.forEach((m) => m.setMap(null));
-        markersRef.current = hospitals.map((h, i) => {
-          const active = selectedId === h.id;
-          const marker = new maps.Marker({
-            position: new maps.LatLng(h.lat, h.lng),
-            map: mapRef.current!,
-            zIndex: active ? 100 : 10 + i,
-            icon: {
-              content: pinHTML(String(i + 1), CAPACITY_COLOR[h.capacity], active),
-              anchor: new maps.Point(17, 42),
-            },
-            title: h.name,
-          });
-          if (onSelect) {
-            maps.Event.addListener(marker, "click", () => onSelect(h.id));
-          }
-          return marker;
-        });
+        if (!cancelled) drawMarkers(maps);
       })
       .catch(() => undefined);
     return () => {
@@ -140,7 +291,7 @@ export function NaverMap({
           <p className="mt-3 text-[13px] font-medium text-text">
             지도를 표시할 수 없어요
           </p>
-          <p className="mt-1 text-[12px] text-text-subtle">
+          <p className="mt-1 whitespace-pre-line text-[12px] leading-relaxed text-text-subtle">
             {error ?? "환경변수에 NEXT_PUBLIC_NAVER_MAP_CLIENT_ID 를 설정해 주세요."}
           </p>
         </div>
@@ -148,9 +299,36 @@ export function NaverMap({
     );
   }
 
+  const showDiag =
+    process.env.NODE_ENV !== "production" && diag !== "tiles-ok";
+
   return (
-    <Card className="relative overflow-hidden p-0" style={{ height }}>
-      <div ref={containerRef} className="absolute inset-0" />
+    <Card
+      ref={cardRef}
+      className="relative overflow-hidden p-0"
+      style={{ height, minHeight: 360 }}
+    >
+      {/*
+        부모 Card 가 어떤 이유로 minHeight 를 무시당해 0 이 되더라도
+        컨테이너만큼은 절대 0 높이가 되지 않도록 인라인으로 fallback 픽셀을 박는다.
+      */}
+      <div
+        ref={containerRef}
+        className="absolute inset-0"
+        style={{ minHeight: 360 }}
+      />
+      {showDiag && (
+        <div
+          className="pointer-events-none absolute left-2 top-2 z-50 rounded-md bg-black/70 px-2 py-1 font-mono text-[10px] leading-tight text-white"
+          style={{ maxWidth: "calc(100% - 16px)" }}
+        >
+          <div>map: {diag}</div>
+          <div>
+            size: {containerSize.w}×{containerSize.h} card:{containerSize.cardH}
+          </div>
+          <div>hosp: {hospitals.length}</div>
+        </div>
+      )}
     </Card>
   );
 }

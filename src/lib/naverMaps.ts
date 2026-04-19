@@ -12,9 +12,14 @@ export interface NaverLatLng {
   lat(): number;
   lng(): number;
 }
+export interface NaverSize {
+  width: number;
+  height: number;
+}
 export interface NaverMapInstance {
   setCenter(latlng: NaverLatLng): void;
   setZoom(z: number, useEffect?: boolean): void;
+  setSize?(size: NaverSize): void;
   destroy(): void;
 }
 export interface NaverMarkerInstance {
@@ -44,6 +49,7 @@ export interface NaverMapsNamespace {
     zIndex?: number;
   }) => NaverMarkerInstance;
   Point: new (x: number, y: number) => NaverPoint;
+  Size: new (width: number, height: number) => NaverSize;
   Event: {
     addListener: (
       target: NaverMarkerInstance | NaverMapInstance,
@@ -61,7 +67,35 @@ export interface NaverPoint {
 declare global {
   interface Window {
     naver?: { maps: NaverMapsNamespace };
+    /** 네이버 지도 인증 실패 콜백 — SDK 가 호출. 도메인 미등록 등의 사유. */
+    navermap_authFailure?: () => void;
   }
+}
+
+/** 인증 실패 발생 시 호출될 리스너들. */
+type AuthFailureListener = () => void;
+const authFailureListeners = new Set<AuthFailureListener>();
+
+export function onNaverAuthFailure(cb: AuthFailureListener): () => void {
+  authFailureListeners.add(cb);
+  return () => {
+    authFailureListeners.delete(cb);
+  };
+}
+
+/** 전역 콜백을 한 번만 설치한다. */
+function installAuthFailureHook() {
+  if (typeof window === "undefined") return;
+  if (window.navermap_authFailure) return;
+  window.navermap_authFailure = () => {
+    for (const cb of authFailureListeners) {
+      try {
+        cb();
+      } catch {
+        /* swallow */
+      }
+    }
+  };
 }
 
 export const NAVER_MAP_CLIENT_ID =
@@ -73,6 +107,7 @@ export function loadNaverMaps(): Promise<NaverMapsNamespace> {
   if (typeof window === "undefined") {
     return Promise.reject(new Error("Naver Maps cannot be loaded on the server."));
   }
+  installAuthFailureHook();
   if (window.naver?.maps) {
     return Promise.resolve(window.naver.maps);
   }
@@ -96,7 +131,9 @@ export function loadNaverMaps(): Promise<NaverMapsNamespace> {
     const s = document.createElement("script");
     s.id = "naver-maps-sdk";
     s.async = true;
-    s.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${encodeURIComponent(
+    // 2024년 후반 NCP Application Services Maps 로 마이그레이션되며
+    // 인증 파라미터가 ncpClientId → ncpKeyId 로 변경됐다.
+    s.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${encodeURIComponent(
       NAVER_MAP_CLIENT_ID,
     )}`;
     s.onload = () => {
