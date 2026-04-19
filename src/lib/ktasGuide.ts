@@ -19,7 +19,12 @@ export type KtasLevel = 1 | 2 | 3 | 4 | 5;
 
 export interface KtasInfo {
   level: KtasLevel;
+  /** 한글 + 영문 풀 라벨 (예: "소생 (Resuscitation)"). */
   label: string;
+  /** 한글 단축 라벨 (예: "소생") — 일반인 가독성용 메인 표기. */
+  koLabel: string;
+  /** 영문 라벨 (예: "Resuscitation"). */
+  enLabel: string;
   /** 화면 뱃지 색 키 — globals.css 의 status tone 을 재활용. */
   tone: "critical" | "urgent" | "warn" | "info" | "ok";
   /** 권장 반응 시간 (사용자에게 노출되는 상한). */
@@ -31,6 +36,8 @@ export const KTAS_META: Record<KtasLevel, KtasInfo> = {
   1: {
     level: 1,
     label: "소생 (Resuscitation)",
+    koLabel: "소생",
+    enLabel: "Resuscitation",
     tone: "critical",
     targetMin: 0,
     summary: "즉각적 생명 위협. 지금 바로 119 에 신고하세요.",
@@ -38,6 +45,8 @@ export const KTAS_META: Record<KtasLevel, KtasInfo> = {
   2: {
     level: 2,
     label: "긴급 (Emergent)",
+    koLabel: "긴급",
+    enLabel: "Emergent",
     tone: "urgent",
     targetMin: 10,
     summary: "잠재적 생명 위협. 10 분 이내 전문 처치가 필요합니다.",
@@ -45,6 +54,8 @@ export const KTAS_META: Record<KtasLevel, KtasInfo> = {
   3: {
     level: 3,
     label: "응급 (Urgent)",
+    koLabel: "응급",
+    enLabel: "Urgent",
     tone: "warn",
     targetMin: 30,
     summary: "진행 가능성이 있는 증상. 30 분 이내 응급실 방문을 권장합니다.",
@@ -52,6 +63,8 @@ export const KTAS_META: Record<KtasLevel, KtasInfo> = {
   4: {
     level: 4,
     label: "준응급 (Less Urgent)",
+    koLabel: "준응급",
+    enLabel: "Less Urgent",
     tone: "info",
     targetMin: 60,
     summary: "지속 관찰이 필요한 증상. 1 시간 이내 평가를 권장합니다.",
@@ -59,11 +72,22 @@ export const KTAS_META: Record<KtasLevel, KtasInfo> = {
   5: {
     level: 5,
     label: "비응급 (Non-urgent)",
+    koLabel: "비응급",
+    enLabel: "Non-urgent",
     tone: "ok",
     targetMin: 120,
     summary: "즉시 처치 필요는 낮아요. 증상 변화가 있으면 다시 확인하세요.",
   },
 };
+
+/**
+ * KTAS 1~5 → 한글 단축 라벨 lookup (lib 외부 컴포넌트가 단순히
+ * `ktasKoLabel(value)` 만 import 해서 쓸 수 있게 한다).
+ */
+export function ktasKoLabel(level: KtasLevel | 0 | null | undefined): string | null {
+  if (!level) return null;
+  return KTAS_META[level as KtasLevel]?.koLabel ?? null;
+}
 
 // ========== 증상별 중증도 가중치 ==========
 //

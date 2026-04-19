@@ -34,6 +34,7 @@ import {
 import { listReports, deleteReport } from "@/services/dispatchReports";
 import { AGE_BANDS, SYMPTOMS } from "@/stores/searchStore";
 import { CAPACITY_META } from "@/lib/mockHospitals";
+import { ktasKoLabel } from "@/lib/ktasGuide";
 import { cn } from "@/lib/cn";
 
 type Tab = "history" | "dispatch";
@@ -611,7 +612,7 @@ function DispatchReportRow({
               ktas.tone === "ok" && "bg-status-available",
             )}
           >
-            KTAS {ktas.value}
+            KTAS {ktas.value} · {ktasKoLabel(ktas.value)}
           </span>
         )}
         {report.reason && (

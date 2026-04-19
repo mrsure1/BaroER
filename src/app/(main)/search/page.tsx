@@ -392,23 +392,40 @@ function KtasCard({
 
   return (
     <Card className={cn("overflow-hidden border p-0 ring-1", t.ring)}>
-      {/* 헤더: KTAS 레벨 · 반응 시간 */}
+      {/* 헤더: KTAS 한글 중증도 + 레벨 + 반응 시간 */}
       <div className={cn("flex items-center gap-3 px-4 py-3", t.bg)}>
-        <div className={cn("grid size-11 shrink-0 place-items-center rounded-full bg-bg shadow-[var(--shadow-sm)]", t.fg)}>
+        <div
+          className={cn(
+            "grid size-12 shrink-0 place-items-center rounded-full bg-bg shadow-[var(--shadow-sm)]",
+            t.fg,
+          )}
+        >
           <span className="text-[18px] font-extrabold leading-none">
             {ktas.level}
           </span>
+          <span className="mt-0.5 text-[9px] font-semibold uppercase tracking-wider opacity-70">
+            단계
+          </span>
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            <span className={cn("text-[12px] font-bold uppercase tracking-wider", t.fg)}>
-              KTAS
+          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+            <span className={cn("text-[15px] font-extrabold leading-none", t.fg)}>
+              {ktas.koLabel}
             </span>
-            <span className={cn("inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] font-semibold", "bg-bg/70", t.fg)}>
-              <Icon className="size-3" /> {ktas.label}
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10.5px] font-semibold",
+                "bg-bg/70",
+                t.fg,
+              )}
+            >
+              <Icon className="size-3" /> KTAS {ktas.level}단계
+            </span>
+            <span className="text-[10.5px] text-text-subtle">
+              {ktas.enLabel}
             </span>
           </div>
-          <p className="mt-0.5 truncate text-[12.5px] text-text">{ktas.summary}</p>
+          <p className="mt-1 truncate text-[12.5px] text-text">{ktas.summary}</p>
         </div>
         <div className="flex shrink-0 flex-col items-end">
           <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-text-muted">
