@@ -160,7 +160,7 @@ export default function SearchPage() {
         }}
       >
         {/* ===== 1) 증상 선택 ===== */}
-        <section className="mb-4">
+        <section className="mb-3 rounded-[var(--radius-md)] border border-border bg-surface p-3 shadow-[var(--shadow-sm)]">
           <SectionTitle icon={<Stethoscope className="size-3.5" />} label="주 증상" hint="복수 선택 가능" />
           <div className="grid grid-cols-3 gap-1.5">
             {SYMPTOMS.map((s) => {
@@ -197,7 +197,7 @@ export default function SearchPage() {
         </section>
 
         {/* ===== 2) 추가 메모 + 음성 (주증상 바로 아래) ===== */}
-        <section className="mb-4">
+        <section className="mb-3 rounded-[var(--radius-md)] border border-border bg-surface p-3 shadow-[var(--shadow-sm)]">
           <SectionTitle icon={<Info className="size-3.5" />} label="추가 메모" hint="선택 · 특이사항" />
           <div className="relative">
             <textarea
@@ -240,7 +240,7 @@ export default function SearchPage() {
         </section>
 
         {/* ===== 3) 환자 기본 정보 — 성별 · 연령 한 줄 ===== */}
-        <section className="mb-4">
+        <section className="mb-3 rounded-[var(--radius-md)] border border-border bg-surface p-3 shadow-[var(--shadow-sm)]">
           <SectionTitle icon={<UserRound className="size-3.5" />} label="환자 정보" />
           <div className="grid grid-cols-[1fr_1.2fr] gap-2">
             <SegmentedControl
@@ -328,9 +328,13 @@ function SectionTitle({
   hint?: string;
 }) {
   return (
-    <header className="mb-2 flex items-center justify-between px-0.5">
-      <h2 className="inline-flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wider text-text-muted">
-        {icon}
+    <header className="mb-2 flex items-center justify-between">
+      <h2 className="inline-flex items-center gap-1.5 text-[13px] font-bold tracking-wide text-text">
+        {icon && (
+          <span className="grid size-5 place-items-center rounded-md bg-primary/12 text-primary">
+            {icon}
+          </span>
+        )}
         {label}
       </h2>
       {hint && <span className="text-[11.5px] text-text-subtle">{hint}</span>}

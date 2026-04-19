@@ -24,10 +24,17 @@ export function ScreenHeader({
   return (
     <header
       className={cn(
-        "flex items-center gap-2 px-5 pb-2 pt-[calc(env(safe-area-inset-top)+10px)]",
+        "relative mb-3 flex items-center gap-2 overflow-hidden",
+        "border-b border-border/70 bg-gradient-to-r from-primary-soft/55 via-bg to-bg",
+        "px-5 pb-3 pt-[calc(env(safe-area-inset-top)+10px)]",
         className,
       )}
     >
+      {/* 좌측 컬러 액센트 바 — 모든 서브 화면의 시그니처 */}
+      <span
+        aria-hidden
+        className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-primary to-primary-hover"
+      />
       {back && (
         <IconButton
           aria-label="뒤로 가기"
