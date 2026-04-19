@@ -22,6 +22,7 @@ export interface NaverLatLngBounds {
 export interface NaverMapInstance {
   setCenter(latlng: NaverLatLng): void;
   setZoom(z: number, useEffect?: boolean): void;
+  getZoom?(): number;
   setSize?(size: NaverSize): void;
   /** padding 은 네이버 SDK v3 에서 `{ top, right, bottom, left }` 형태의 객체를 받는다. */
   fitBounds?(

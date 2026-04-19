@@ -288,6 +288,19 @@ export function NaverMap({
             bottom: 80,
             left: 40,
           });
+          // fitBounds 는 모든 마커가 들어가는 "최소 줌" 을 선택하기 때문에
+          // 보이는 거리감이 멀게 느껴질 수 있다. 사용자 요청에 따라 한 단계
+          // 더 줌인해서 병원 위치를 좀 더 가까이 보여준다.
+          // (사용자가 직접 줌아웃 하면 이후엔 fitDoneForRef 로 잠겨서 자동
+          //  재조정되지 않으니 안전.)
+          try {
+            const z = mapRef.current.getZoom?.();
+            if (typeof z === "number") {
+              mapRef.current.setZoom(z + 1, true);
+            }
+          } catch {
+            /* zoom 조정 실패는 무시 */
+          }
           fitDoneForRef.current = fitKey;
         } catch {
           /* fit 실패는 치명적이지 않음 — 기본 줌으로 표시 */
