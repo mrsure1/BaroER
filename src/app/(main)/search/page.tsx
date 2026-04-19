@@ -12,6 +12,7 @@ import {
   Info,
   Mic,
   MicOff,
+  RotateCcw,
   Search as SearchIcon,
   Stethoscope,
   Timer,
@@ -63,6 +64,7 @@ export default function SearchPage() {
   const notes = useSearchStore((s) => s.notes);
   const setNotes = useSearchStore((s) => s.setNotes);
   const setCoords = useSearchStore((s) => s.setCoords);
+  const resetSearch = useSearchStore((s) => s.reset);
   const user = useAuthStore((s) => s.user);
 
   const [submitting, setSubmitting] = useState(false);
@@ -127,6 +129,24 @@ export default function SearchPage() {
     }
   }
 
+  // 헤더 우측 "초기화" — 모든 입력값(증상/성별/연령/메모/좌표) 을 비우고
+  // 음성 인식이 켜져 있다면 중지한 뒤, 페이지를 새로 로드해 처음부터 입력
+  // 흐름을 다시 시작할 수 있게 한다. (사용자 요구: "reload 되게")
+  function handleReset() {
+    if (listening) {
+      try {
+        stopVoice();
+      } catch {
+        /* noop */
+      }
+    }
+    resetSearch();
+    baselineNotesRef.current = "";
+    if (typeof window !== "undefined") {
+      window.location.reload();
+    }
+  }
+
   async function handleSubmit() {
     if (!canSubmit) return;
     setSubmitting(true);
@@ -146,7 +166,22 @@ export default function SearchPage() {
 
   return (
     <>
-      <ScreenHeader title="환자 상태 평가" subtitle="증상을 선택하면 KTAS 중증도가 즉시 계산됩니다" back />
+      <ScreenHeader
+        title="환자 상태 평가"
+        subtitle="증상을 선택하면 KTAS 중증도가 즉시 계산됩니다"
+        back
+        right={
+          <button
+            type="button"
+            onClick={handleReset}
+            aria-label="입력 초기화"
+            className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-1 text-[12.5px] font-semibold text-text-muted shadow-[var(--shadow-sm)] transition-colors hover:border-primary/40 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          >
+            <RotateCcw className="size-3.5" />
+            초기화
+          </button>
+        }
+      />
 
       {/*
         하단 floating 검색 버튼 영역(buttom 약 64px + 도움말 + 안전영역 + 하단탭바)
