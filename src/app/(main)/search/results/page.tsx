@@ -281,41 +281,62 @@ export default function SearchResultsPage() {
                         pointerEvents: "none",
                       }
                 }
-                className="relative"
               >
-                <NaverMap
-                  center={coords!}
-                  hospitals={hospitals}
-                  selectedId={selectedId}
-                  onSelect={(id) => setSelectedId(id)}
-                />
+                <div className="relative">
+                  <NaverMap
+                    center={coords!}
+                    hospitals={hospitals}
+                    selectedId={selectedId}
+                    onSelect={(id) => setSelectedId(id)}
+                  />
+                  {/*
+                    선택된 병원 정보는 지도 카드 위에 absolute 로 띄워, 지도 영역과
+                    하단 빈 공간을 한 화면에서 모두 활용한다. wrapper 는
+                    pointer-events-none 으로 두고 카드만 pointer-events-auto 를
+                    켜서 지도의 패닝/마커 클릭을 가리지 않도록 한다.
+                  */}
+                  <AnimatePresence>
+                    {selectedId && view === "map" && (
+                      <motion.div
+                        key="selected-overlay"
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 12 }}
+                        transition={{ duration: 0.18 }}
+                        className="pointer-events-none absolute inset-x-3 bottom-3 z-20"
+                      >
+                        <div className="pointer-events-auto">
+                          <SelectedSummary
+                            hospital={
+                              hospitals.find((h) => h.id === selectedId) ?? null
+                            }
+                            origin={coords!}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
                 {/*
-                  선택된 병원 정보는 지도 카드 위에 absolute 로 띄워, 지도 영역과
-                  하단 빈 공간을 한 화면에서 모두 활용한다. wrapper 는
-                  pointer-events-none 으로 두고 카드만 pointer-events-auto 를
-                  켜서 지도의 패닝/마커 클릭을 가리지 않도록 한다.
+                  지도 아래 컴팩트 리스트 — 지도의 핀 번호/색상과 1:1 매칭되는
+                  축약 행. 행을 탭하면 기존 selectedId 흐름을 그대로 타고 지도
+                  위에 SelectedSummary 가 뜬다. 전화/길안내 같은 풀 액션은
+                  리스트 뷰에 유지하여 역할을 분리.
                 */}
-                <AnimatePresence>
-                  {selectedId && view === "map" && (
-                    <motion.div
-                      key="selected-overlay"
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 12 }}
-                      transition={{ duration: 0.18 }}
-                      className="pointer-events-none absolute inset-x-3 bottom-3 z-20"
-                    >
-                      <div className="pointer-events-auto">
-                        <SelectedSummary
-                          hospital={
-                            hospitals.find((h) => h.id === selectedId) ?? null
-                          }
-                          origin={coords!}
-                        />
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                {hospitals.length > 0 && (
+                  <div className="mt-3 flex flex-col gap-1">
+                    {hospitals.map((h, i) => (
+                      <MapCompactRow
+                        key={h.id}
+                        index={i}
+                        hospital={h}
+                        active={selectedId === h.id}
+                        onTap={() => setSelectedId(h.id)}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -521,6 +542,56 @@ function HospitalCard({
         </div>
       </Card>
     </motion.div>
+  );
+}
+
+/**
+ * 지도 뷰 하단에 노출되는 1줄짜리 병원 요약 행.
+ * 지도 마커의 번호/색상과 시각적으로 매칭되도록 좌측에 용량색 번호 배지를 두고,
+ * 우측에는 소요시간·거리만 노출한다. 전화/길안내 등 본격 액션은 리스트 뷰의
+ * HospitalCard 가 담당하도록 역할을 분리.
+ */
+function MapCompactRow({
+  index,
+  hospital,
+  active,
+  onTap,
+}: {
+  index: number;
+  hospital: Hospital;
+  active: boolean;
+  onTap: () => void;
+}) {
+  const meta = CAPACITY_META[hospital.capacity];
+  return (
+    <button
+      type="button"
+      onClick={onTap}
+      className={cn(
+        "flex w-full items-center gap-2.5 rounded-[var(--radius-sm)] border px-2.5 py-2 text-left transition-colors",
+        active
+          ? "border-primary/60 bg-primary-soft"
+          : "border-border bg-bg hover:bg-surface-2",
+      )}
+    >
+      <span
+        className={cn(
+          "grid size-7 shrink-0 place-items-center rounded-full text-[12px] font-bold ring-1",
+          meta.tone,
+          meta.ring,
+        )}
+      >
+        {index + 1}
+      </span>
+      <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium text-text">
+        {hospital.name}
+      </span>
+      <span className="shrink-0 font-mono text-[12px] tabular-nums text-text-muted">
+        {hospital.distanceKm.toFixed(1)}km
+        <span className="mx-1 text-text-subtle">·</span>
+        {hospital.etaMin}분
+      </span>
+    </button>
   );
 }
 
