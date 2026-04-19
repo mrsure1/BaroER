@@ -255,15 +255,18 @@ export default function SearchResultsPage() {
               </Button>
             </Card>
           ) : (
-            // view 전환 시 NaverMap 을 unmount 하지 않는다.
-            // 지도와 리스트를 동시에 mount 해두고, 비활성 view 는 화면 밖으로
-            // 옮겨 keep-alive. 이렇게 하면:
-            //  - 사용자가 list view 를 보는 동안 NaverMap 은 백그라운드에서
-            //    SDK 평가 → Map 인스턴스 → 타일 fetch → 마커 그리기를 모두 마침
-            //  - "지도" 탭을 누르는 순간 화면에 즉시 노출 (재초기화 없음)
-            //  - 비활성 view 는 display:none 이 아닌 absolute+offscreen 으로
-            //    실제 width/height 를 유지 (Naver SDK 가 0×0 컨테이너에서는
-            //    타일을 요청하지 않으므로 이 트릭이 핵심)
+            // view 전환 정책 — 빈 여백 vs. 지도 재초기화의 trade-off.
+            //
+            // (1) **List view** 가 비활성일 때는 `height: 0` 로 접는다.
+            //     → 지도 탭에서 리스트 카드의 높이만큼 빈 스크롤이 남는
+            //        문제를 원천 제거.
+            //     → 카드 컴포넌트는 unmount 되지 않으므로 다시 list 탭으로
+            //        돌아갈 때 즉시 보인다.
+            //
+            // (2) **Map view** 는 비활성일 때 화면 밖(absolute+offscreen)으로
+            //     옮겨 NaverMap 인스턴스를 살아있게 둔다 — SDK 가 0×0
+            //     컨테이너에서는 타일 요청을 하지 않기 때문에, 사이즈를 유지해야
+            //     "지도" 탭 전환 시 즉시 보인다.
             <div className="relative">
               <div
                 aria-hidden={view !== "list"}
@@ -271,10 +274,11 @@ export default function SearchResultsPage() {
                   view === "list"
                     ? undefined
                     : {
-                        position: "absolute",
-                        left: -9999,
-                        top: 0,
-                        width: "100%",
+                        // 빈 스크롤 영역 제거 — 카드들의 자연 높이가 부모에
+                        // 흘러들어가지 않도록 0 으로 접는다.
+                        height: 0,
+                        overflow: "hidden",
+                        visibility: "hidden",
                         pointerEvents: "none",
                       }
                 }

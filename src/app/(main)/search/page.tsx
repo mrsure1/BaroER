@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -68,6 +68,14 @@ export default function SearchPage() {
   const [submitting, setSubmitting] = useState(false);
   const [guidanceOpen, setGuidanceOpen] = useState(true);
 
+  // 음성 입력 시 기존 메모 baseline 을 보존해, listening 중 transcript 와
+  // 종료 시 finalText 가 **이중으로 누적되는 현상** 을 막는다.
+  // - 시작 직전 notes 를 baseline 에 캡처
+  // - listening 중: textarea = baseline + " " + transcript (interim 미리보기)
+  // - 종료 시 onFinalResult(finalText) 로 동일하게 baseline + " " + finalText
+  //   를 한 번만 set → 결과가 겹치지 않는다.
+  const baselineNotesRef = useRef("");
+
   const {
     supported: voiceSupported,
     listening,
@@ -78,12 +86,23 @@ export default function SearchPage() {
   } = useSpeechRecognition({
     lang: "ko-KR",
     onFinalResult: (text) => {
-      setNotes(notes ? `${notes} ${text}`.trim() : text);
+      const base = baselineNotesRef.current;
+      setNotes(base ? `${base} ${text}`.trim() : text);
     },
   });
 
+  // listening 중 interim 결과를 baseline 에 덧대어 실시간 미리보기.
+  // (transcript 가 비어 있는 잠깐의 침묵 구간엔 baseline 만 보존)
   useEffect(() => {
-    if (listening && transcript) setNotes(transcript);
+    if (!listening) return;
+    const base = baselineNotesRef.current;
+    setNotes(
+      base
+        ? transcript
+          ? `${base} ${transcript}`
+          : base
+        : transcript,
+    );
   }, [listening, transcript, setNotes]);
 
   const audience = user?.userType === "PARAMEDIC" ? "paramedic" : "general";
@@ -99,8 +118,13 @@ export default function SearchPage() {
   const canSubmit = symptoms.length > 0;
 
   function handleVoice() {
-    if (listening) stopVoice();
-    else startVoice();
+    if (listening) {
+      stopVoice();
+    } else {
+      // 음성 시작 직전의 notes 를 기억해두고, transcript 는 그 뒤에만 덧붙인다.
+      baselineNotesRef.current = notes;
+      startVoice();
+    }
   }
 
   async function handleSubmit() {
@@ -162,45 +186,7 @@ export default function SearchPage() {
           </div>
         </section>
 
-        {/* ===== 2) 환자 기본 정보 — 성별 · 연령 한 줄 ===== */}
-        <section className="mb-4">
-          <SectionTitle icon={<UserRound className="size-3.5" />} label="환자 정보" />
-          <div className="grid grid-cols-[1fr_1.2fr] gap-2">
-            <SegmentedControl
-              options={genderOptions}
-              value={gender}
-              onChange={setGender}
-              ariaLabel="성별"
-              tone="primary"
-              fullWidth
-            />
-            <AgeBandSelect value={ageBand} onChange={setAgeBand} />
-          </div>
-        </section>
-
-        {/* ===== 3) KTAS 중증도 뱃지 + 응급조치 ===== */}
-        <AnimatePresence initial={false}>
-          {symptoms.length > 0 && (
-            <motion.section
-              key="ktas-card"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-              className="mb-4 overflow-hidden"
-            >
-              <KtasCard
-                ktas={ktas}
-                audience={audience}
-                open={guidanceOpen}
-                onToggle={() => setGuidanceOpen((v) => !v)}
-                guidance={guidance}
-              />
-            </motion.section>
-          )}
-        </AnimatePresence>
-
-        {/* ===== 4) 추가 메모 + 음성 ===== */}
+        {/* ===== 2) 추가 메모 + 음성 (주증상 바로 아래) ===== */}
         <section className="mb-4">
           <SectionTitle icon={<Info className="size-3.5" />} label="추가 메모" hint="선택 · 특이사항" />
           <div className="relative">
@@ -236,12 +222,30 @@ export default function SearchPage() {
           </div>
           {(voiceError || listening) && (
             <p className="mt-1 px-0.5 text-[11.5px] text-text-subtle">
-              {voiceError ? `음성 인식 오류: ${voiceError}` : "듣고 있어요…"}
+              {voiceError
+                ? `음성 인식 오류: ${voiceError}`
+                : "듣고 있어요… 길게 말해도 끊기지 않아요. 다시 누르면 멈춰요."}
             </p>
           )}
         </section>
 
-        {/* ===== 5) 제출 버튼 ===== */}
+        {/* ===== 3) 환자 기본 정보 — 성별 · 연령 한 줄 ===== */}
+        <section className="mb-4">
+          <SectionTitle icon={<UserRound className="size-3.5" />} label="환자 정보" />
+          <div className="grid grid-cols-[1fr_1.2fr] gap-2">
+            <SegmentedControl
+              options={genderOptions}
+              value={gender}
+              onChange={setGender}
+              ariaLabel="성별"
+              tone="primary"
+              fullWidth
+            />
+            <AgeBandSelect value={ageBand} onChange={setAgeBand} />
+          </div>
+        </section>
+
+        {/* ===== 4) 제출 버튼 ===== */}
         <div className="sticky bottom-[calc(72px+env(safe-area-inset-bottom)+12px)] z-10 mt-2">
           <Button
             size="xl"
@@ -260,6 +264,31 @@ export default function SearchPage() {
             </p>
           )}
         </div>
+
+        {/* ===== 5) KTAS 중증도 + 응급조치 (최하단) =====
+            검색 버튼은 항상 thumb-zone 안쪽에 있어야 하므로 KTAS 카드는
+            제출 버튼 **아래쪽** 으로 내려, 사용자가 응급조치 가이드를 자세히
+            살펴보더라도 검색 동작에 방해되지 않게 한다. */}
+        <AnimatePresence initial={false}>
+          {symptoms.length > 0 && (
+            <motion.section
+              key="ktas-card"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              className="mt-5 overflow-hidden"
+            >
+              <KtasCard
+                ktas={ktas}
+                audience={audience}
+                open={guidanceOpen}
+                onToggle={() => setGuidanceOpen((v) => !v)}
+                guidance={guidance}
+              />
+            </motion.section>
+          )}
+        </AnimatePresence>
       </div>
     </>
   );
