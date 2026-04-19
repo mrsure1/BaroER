@@ -59,14 +59,17 @@ export default function HomePage() {
 
   return (
     <div className="mx-auto w-full max-w-[520px] px-5 pb-4 pt-[calc(env(safe-area-inset-top)+6px)]">
-      {/* Header — 로고 + 짧은 카피 한 줄. greeting 섹션을 제거하고 동일 정보를
-          상단에 통합해 한 뷰포트 fold 안 콘텐츠 밀도를 높였다. */}
+      {/* Header — 로고와 메인 카피를 한 행에 나란히 배치.
+          카피는 두 줄까지 자연 wrap 되도록 두고, 강조 단어는 브랜드 그라디언트로
+          시선을 잡는다. greeting 섹션을 제거한 만큼 fold 위 정보 밀도가 유지됨. */}
       <header className="flex items-center gap-3 py-1.5">
         <Logo height={32} priority />
-        <p className="min-w-0 flex-1 truncate text-[12.5px] font-medium leading-snug text-text-muted">
+        <h1 className="min-w-0 flex-1 text-[18px] font-bold leading-[1.2] tracking-tight text-text">
           응급실이 필요할 때,{" "}
-          <span className="font-semibold text-text">바로 연결해 드릴게요.</span>
-        </p>
+          <span className="bg-gradient-to-r from-primary to-primary-hover bg-clip-text text-transparent">
+            바로 연결해 드릴게요.
+          </span>
+        </h1>
       </header>
 
       {/* Hero CTA */}

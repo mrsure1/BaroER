@@ -1,11 +1,14 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import {
   Activity,
   Ambulance,
   HeartPulse,
+  Lock,
   MapPin,
   Save,
   Stethoscope,
@@ -21,7 +24,6 @@ import {
   KTAS_OPTIONS,
   TREATMENT_OPTIONS,
   createEmptyReport,
-  useDispatchReportsStore,
   type DispatchReport,
   type Consciousness,
   type DispatchReason,
@@ -29,6 +31,7 @@ import {
   type TreatmentId,
 } from "@/stores/dispatchReportsStore";
 import { useAuthStore } from "@/stores/authStore";
+import { createReport, getReport, updateReport } from "@/services/dispatchReports";
 import { cn } from "@/lib/cn";
 
 /**
@@ -56,17 +59,21 @@ function NewDispatchReportContent() {
   const sp = useSearchParams();
   const editId = sp.get("id");
   const user = useAuthStore((s) => s.user);
-  const upsert = useDispatchReportsStore((s) => s.upsert);
-  const reports = useDispatchReportsStore((s) => s.reports);
+  const isParamedic = user?.userType === "PARAMEDIC";
 
-  const existing = useMemo(
-    () => (editId ? reports.find((r) => r.id === editId) : null),
-    [editId, reports],
-  );
+  // 수정 모드: supabase 에서 단건 fetch
+  const { data: existing, isLoading: existingLoading } = useQuery({
+    queryKey: ["dispatch-report", editId],
+    queryFn: () => (editId ? getReport(editId) : Promise.resolve(null)),
+    enabled: !!editId && isParamedic,
+    staleTime: 0,
+  });
 
   const [form, setForm] = useState<Omit<DispatchReport, "id" | "createdAt" | "updatedAt">>(
-    () => existing ?? createEmptyReport(),
+    () => createEmptyReport(),
   );
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (existing) setForm(existing);
@@ -94,10 +101,64 @@ function NewDispatchReportContent() {
         : [...prev.treatments, id],
     }));
 
-  const onSave = () => {
-    upsert(form, editId ?? undefined);
-    router.push("/dispatch?tab=dispatch");
+  const onSave = async () => {
+    if (!isParamedic || saving) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      if (editId) {
+        await updateReport(editId, form);
+      } else {
+        await createReport(form);
+      }
+      router.push("/dispatch?tab=dispatch");
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "저장 중 오류가 발생했어요.");
+    } finally {
+      setSaving(false);
+    }
   };
+
+  // 비-구급대원 가드 — 작성/수정 자체를 막아 안내한다.
+  if (!isParamedic) {
+    return (
+      <>
+        <ScreenHeader title="구급 리포트 작성" back />
+        <div className="mx-auto w-full max-w-[520px] px-5">
+          <Card className="mt-6 p-6 text-center">
+            <div className="mx-auto grid size-14 place-items-center rounded-full bg-surface-2 text-text-muted">
+              <Lock className="size-6" />
+            </div>
+            <h2 className="mt-3 text-[16px] font-bold text-text">
+              구급대원 전용 기능이에요
+            </h2>
+            <p className="mt-1.5 text-[13px] leading-relaxed text-text-muted">
+              구급활동일지 작성은 구급대원 계정에서만 가능해요.
+              <br />
+              프로필에서 사용자 유형을 구급대원으로 변경해 주세요.
+            </p>
+            <Link
+              href="/settings/profile"
+              className="mt-5 inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-[13.5px] font-semibold text-primary-fg shadow-[var(--shadow-md)]"
+            >
+              프로필로 이동
+            </Link>
+          </Card>
+        </div>
+      </>
+    );
+  }
+
+  if (editId && existingLoading) {
+    return (
+      <>
+        <ScreenHeader title="리포트 수정" back />
+        <div className="mx-auto w-full max-w-[520px] px-5 pt-10 text-center text-[13px] text-text-muted">
+          불러오는 중…
+        </div>
+      </>
+    );
+  }
 
   const onQuickNow = (key: keyof Pick<
     typeof form,
@@ -476,22 +537,31 @@ function NewDispatchReportContent() {
 
         {/* Sticky bottom actions */}
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-bg/95 px-5 py-3 backdrop-blur">
-          <div className="mx-auto flex max-w-[640px] items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              fullWidth
-              onClick={() => router.back()}
-            >
-              취소
-            </Button>
-            <Button
-              type="submit"
-              fullWidth
-              leftIcon={<Save className="size-4" />}
-            >
-              저장
-            </Button>
+          <div className="mx-auto max-w-[640px]">
+            {saveError && (
+              <p className="mb-2 rounded-[var(--radius-sm)] bg-status-full-soft px-3 py-2 text-[12px] text-status-full">
+                {saveError}
+              </p>
+            )}
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                fullWidth
+                disabled={saving}
+                onClick={() => router.back()}
+              >
+                취소
+              </Button>
+              <Button
+                type="submit"
+                fullWidth
+                loading={saving}
+                leftIcon={<Save className="size-4" />}
+              >
+                저장
+              </Button>
+            </div>
           </div>
         </div>
       </form>
