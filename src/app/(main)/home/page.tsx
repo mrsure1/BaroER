@@ -452,7 +452,7 @@ function Footer() {
     <footer className="mt-auto pt-0.5 text-center">
       <div className="space-y-0.5 text-[10px] leading-tight text-text-subtle">
         <p className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5">
-          <span className="font-semibold text-text-muted">데이터</span>
+          <span className="font-semibold text-text-muted">데이터 제공</span>
           {SOURCES.map(({ href, label, short, Icon }) => (
             <span key={href} className="inline-flex items-center gap-1">
               <span className="text-text-subtle/60">·</span>
