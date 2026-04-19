@@ -569,13 +569,35 @@ function HospitalCard({
             </div>
 
             {showRatio && (
-              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-2">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.round(ratio * 100)}%` }}
-                  transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-                  className={cn("h-full rounded-full", meta.dot)}
-                />
+              <div className="mt-3">
+                {/*
+                  응급실 가용 병상 비율 시각화. 막대 단독으로는 의미가 모호해
+                  바로 위에 "가용 X / 정원 Y · NN%" 라벨을 붙여 수치와 비율을
+                  동시에 노출한다. 백분율은 색·길이의 의미를 텍스트로 한 번
+                  더 보강해 사용자가 그래프를 한눈에 해석할 수 있게 한다.
+                */}
+                <div className="mb-1 flex items-baseline justify-between text-[11px]">
+                  <span className="font-medium text-text-muted">
+                    응급실 가용 병상
+                  </span>
+                  <span className="font-mono tabular-nums text-text-muted">
+                    가용 <span className="font-semibold text-text">{er}</span>
+                    <span className="mx-0.5 text-text-subtle">/</span>
+                    정원 {erTotal}
+                    <span className="mx-1 text-text-subtle">·</span>
+                    <span className="font-semibold text-text">
+                      {Math.round(ratio * 100)}%
+                    </span>
+                  </span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-surface-2">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.round(ratio * 100)}%` }}
+                    transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+                    className={cn("h-full rounded-full", meta.dot)}
+                  />
+                </div>
               </div>
             )}
 

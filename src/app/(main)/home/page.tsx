@@ -44,12 +44,18 @@ export default function HomePage() {
   const isParamedic = user?.userType === "PARAMEDIC";
   const recent = useHistoryStore((s) => s.entries[0]);
 
+  // 컨테이너를 화면 높이에 정확히 맞춰 둠으로써 페이지 자체 스크롤을 차단.
+  // 5단 + 푸터를 모두 fold 안에 가두는 게 디자인 의도이며, 일부 미세 over 는
+  // 자식 단위 패딩 압축(아래 각 섹션) 으로 흡수한다. 매우 작은 화면(예: 320px
+  // 미만 wearable) 에선 overflow-hidden 으로 잘리는 게 무한 스크롤보다 UX 가
+  // 명확.
   return (
     <div
       className={cn(
-        "mx-auto flex w-full max-w-[520px] flex-col gap-3 px-5 pb-3",
-        "pt-[calc(env(safe-area-inset-top)+6px)]",
-        "min-h-[calc(100dvh-72px-env(safe-area-inset-bottom)-env(safe-area-inset-top))]",
+        "mx-auto flex w-full max-w-[520px] flex-col gap-2.5 px-5 pb-2",
+        "pt-[calc(env(safe-area-inset-top)+4px)]",
+        "h-[calc(100dvh-72px-env(safe-area-inset-bottom)-env(safe-area-inset-top))]",
+        "overflow-hidden",
       )}
     >
       <Header />
@@ -73,9 +79,9 @@ export default function HomePage() {
 
 function Header() {
   return (
-    <header className="flex items-center gap-3 py-1">
-      <Logo height={32} priority />
-      <h1 className="min-w-0 flex-1 text-[18px] font-bold leading-[1.2] tracking-tight text-text">
+    <header className="flex items-center gap-2.5 py-0.5">
+      <Logo height={28} priority />
+      <h1 className="min-w-0 flex-1 text-[16.5px] font-bold leading-[1.2] tracking-tight text-text">
         응급실이 필요할 때,{" "}
         <span className="bg-gradient-to-r from-primary to-primary-hover bg-clip-text text-transparent">
           바로 연결해 드릴게요.
@@ -103,7 +109,7 @@ function HeroCard() {
             className="pointer-events-none absolute -bottom-20 -left-6 size-64 rounded-full bg-white/10 blur-3xl"
           />
 
-          <div className="relative flex flex-col gap-3 p-4">
+          <div className="relative flex flex-col gap-2 p-3.5">
             <div className="flex items-center gap-1.5 self-start rounded-full bg-white/20 px-2.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider text-white backdrop-blur-sm">
               <Sparkles className="size-3" />
               실시간 응급실 검색
@@ -111,12 +117,12 @@ function HeroCard() {
 
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <h2 className="text-[17px] font-bold leading-[1.2] text-white">
+                <h2 className="text-[16.5px] font-bold leading-[1.2] text-white">
                   환자 상태를 입력하고
                   <br />
                   가장 가까운 응급실 찾기
                 </h2>
-                <p className="mt-1 text-[12px] leading-snug text-white/85">
+                <p className="mt-0.5 text-[11.5px] leading-snug text-white/85">
                   병상 · 예상 소요 시간 · 길안내까지 한 번에
                 </p>
               </div>
@@ -124,13 +130,13 @@ function HeroCard() {
                 initial={{ scale: 0.95, opacity: 0.9 }}
                 animate={{ scale: [0.95, 1.05, 0.95] }}
                 transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
-                className="grid size-11 shrink-0 place-items-center rounded-full bg-white/95 text-primary shadow-xl"
+                className="grid size-10 shrink-0 place-items-center rounded-full bg-white/95 text-primary shadow-xl"
               >
-                <Siren className="size-[22px]" strokeWidth={2.4} />
+                <Siren className="size-[20px]" strokeWidth={2.4} />
               </motion.div>
             </div>
 
-            <div className="flex items-center gap-1.5 self-start rounded-full bg-black/20 px-2.5 py-1 text-[12px] font-medium text-white group-hover:bg-black/30">
+            <div className="flex items-center gap-1.5 self-start rounded-full bg-black/20 px-2.5 py-0.5 text-[11.5px] font-medium text-white group-hover:bg-black/30">
               시작하기
               <ChevronRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
             </div>
@@ -154,11 +160,11 @@ function TrustStrip() {
     { Icon: Clock, big: "24h", label: "야간·주말 운영 표시" },
   ];
   return (
-    <Card className="grid grid-cols-3 divide-x divide-border p-0">
+      <Card className="grid grid-cols-3 divide-x divide-border p-0">
       {stats.map(({ Icon, big, label }) => (
         <div
           key={label}
-          className="flex flex-col items-center gap-0.5 px-2 py-2.5 text-center"
+          className="flex flex-col items-center gap-0.5 px-2 py-2 text-center"
         >
           <Icon className="size-3.5 text-primary" strokeWidth={2.2} />
           <p className="text-[14.5px] font-bold leading-none text-text">{big}</p>
@@ -318,14 +324,14 @@ function SafetyGuide({ isParamedic }: { isParamedic: boolean }) {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.16 }}
       >
-        <Card className="p-3">
-          <div className="mb-2 flex items-center gap-1.5">
+        <Card className="p-2.5">
+          <div className="mb-1.5 flex items-center gap-1.5">
             <Activity className="size-3.5 text-accent" />
             <p className="text-[10.5px] font-semibold uppercase tracking-wider text-accent">
               현장 평가 빠른 참조
             </p>
           </div>
-          <ul className="space-y-1.5">
+          <ul className="space-y-1">
             {refs.map((r) => (
               <li
                 key={r.code}
@@ -356,8 +362,8 @@ function SafetyGuide({ isParamedic }: { isParamedic: boolean }) {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4, delay: 0.16 }}
     >
-      <Card className="p-3">
-        <div className="mb-2 flex items-center gap-1.5">
+      <Card className="p-2.5">
+        <div className="mb-1.5 flex items-center gap-1.5">
           <Siren className="size-3.5 text-status-full" />
           <p className="text-[10.5px] font-semibold uppercase tracking-wider text-status-full">
             즉시 119가 필요한 신호
@@ -367,7 +373,7 @@ function SafetyGuide({ isParamedic }: { isParamedic: boolean }) {
           {signs.map(({ Icon, label }) => (
             <li
               key={label}
-              className="flex flex-col items-center gap-1 rounded-[var(--radius-sm)] bg-status-full-soft/60 px-2 py-2 text-center"
+              className="flex flex-col items-center gap-1 rounded-[var(--radius-sm)] bg-status-full-soft/60 px-2 py-1.5 text-center"
             >
               <Icon className="size-4 text-status-full" strokeWidth={2.2} />
               <span className="text-[10.5px] font-medium leading-tight text-status-full">
@@ -376,7 +382,7 @@ function SafetyGuide({ isParamedic }: { isParamedic: boolean }) {
             </li>
           ))}
         </ul>
-        <p className="mt-2 text-[10.5px] leading-snug text-text-muted">
+        <p className="mt-1.5 text-[10.5px] leading-snug text-text-muted">
           위 신호가 보이면 검색 전 먼저 <b className="text-status-full">119</b> 에
           전화하세요.
         </p>
@@ -385,17 +391,89 @@ function SafetyGuide({ isParamedic }: { isParamedic: boolean }) {
   );
 }
 
+/**
+ * 데이터 출처 + 의료 면책 푸터.
+ *
+ * 공공데이터/공식 사이트로의 외부 링크 패턴(텍스트 attribution + 새 창 이동)
+ * 은 한국 저작권법 §24의2(공공저작물 자유이용) + §28(인용) 범위 안에서
+ * 안전하며, Google Play / App Store 의 의료 카테고리 심사에서도 출처 명시는
+ * 가산 요소다. "공식·인증·협력" 같은 사칭 단어는 의도적으로 피하고
+ * "데이터 제공 / 참조 / 지도" 라는 중립적 라벨만 사용한다.
+ */
+/**
+ * 한 화면(fold) 안에 들어가도록 4줄 → 2줄로 압축한 버전.
+ * - "지도" 라인은 NaverMap SDK 자체 워터마크(© NAVER) 가 지도에 자동 표시되어
+ *   네이버 클라우드 플랫폼 약관상 별도 텍스트 attribution 없이도 무방.
+ * - 데이터 제공처(공공데이터포털·E-Gen·보건복지부)와 참조(KTAS·소방청 119)는
+ *   한 줄로 합쳐 "데이터·참조 / 면책" 2줄 구성으로 단순화.
+ */
 function Footer() {
   return (
-    <footer className="mt-auto pt-1 text-center">
-      <p className="text-[10.5px] leading-tight text-text-subtle">
-        실시간 응급의료 데이터 · 공공데이터포털 E-Gen
-        <br />
-        <span className="text-text-muted/80">
-          BaroER · 의료 행위를 대체하지 않습니다
-        </span>
-      </p>
+    <footer className="mt-auto pt-1.5 text-center">
+      <div className="space-y-0.5 text-[10px] leading-tight text-text-subtle">
+        <p>
+          <FooterLabel>데이터</FooterLabel>
+          <Ext href="https://www.data.go.kr" label="공공데이터포털">
+            공공데이터포털
+          </Ext>
+          <Sep />
+          <Ext href="https://www.e-gen.or.kr" label="중앙응급의료센터 E-Gen">
+            E-Gen
+          </Ext>
+          <Sep />
+          <Ext href="https://www.mohw.go.kr" label="보건복지부">
+            보건복지부
+          </Ext>
+          <Sep />
+          <Ext href="https://www.ktas.org" label="대한응급의학회 KTAS">
+            KTAS
+          </Ext>
+          <Sep />
+          <Ext href="https://www.nfa.go.kr" label="소방청">
+            소방청 119
+          </Ext>
+        </p>
+        <p className="text-text-subtle/80">
+          본 앱은 의료 행위를 대체하지 않습니다 ·{" "}
+          <span className="text-status-full/80">위급 시 즉시 119</span>
+        </p>
+      </div>
     </footer>
+  );
+}
+
+function FooterLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <span className="font-semibold text-text-muted">{children}</span>
+      <span className="mx-1.5 text-text-subtle/60">·</span>
+    </>
+  );
+}
+
+function Sep() {
+  return <span className="mx-1 text-text-subtle/60">·</span>;
+}
+
+function Ext({
+  href,
+  label,
+  children,
+}: {
+  href: string;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`${label} 새 창에서 열기`}
+      className="underline-offset-2 transition-colors hover:text-primary hover:underline"
+    >
+      {children}
+    </a>
   );
 }
 
