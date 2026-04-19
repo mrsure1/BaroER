@@ -130,6 +130,56 @@ function HeroCard() {
                   병상 · 예상 소요 시간 · 길안내까지 한 번에
                 </p>
               </div>
+              {/* ============================================================
+                  ★ HeroCard 강조 아이콘 — 현재: "회전 + 반짝" 디자인
+                  ------------------------------------------------------------
+                  · 외곽 conic-gradient ring 이 8초 주기로 천천히 회전
+                  · 흰 원판 위 사이렌 아이콘은 정지 (회전체와 분리)
+                  · 우상단/좌하단 sparkle dot 이 엇갈려 페이드인/아웃
+                  마음에 안 들면 ⬇ 이 블록을 주석 처리하고
+                  바로 아래 "이전 박동 디자인" 블록의 주석을 풀어 주세요.
+              ============================================================ */}
+              <div className="relative size-11 shrink-0">
+                <motion.div
+                  aria-hidden
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    background:
+                      "conic-gradient(from 0deg, rgba(255,255,255,1), rgba(255,255,255,0.45), rgba(255,255,255,1))",
+                  }}
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                />
+                <div className="absolute inset-[3px] grid place-items-center rounded-full bg-white text-primary shadow-xl">
+                  <Siren className="size-[18px]" strokeWidth={2.4} />
+                </div>
+                {/* sparkle: 우상단 큰 별 */}
+                <motion.span
+                  aria-hidden
+                  className="absolute -right-1 -top-1 grid size-3 place-items-center"
+                  animate={{ opacity: [0, 1, 0], scale: [0.6, 1.1, 0.6] }}
+                  transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                >
+                  <Sparkles className="size-3 text-amber-300 drop-shadow-[0_0_4px_rgba(252,211,77,0.9)]" />
+                </motion.span>
+                {/* sparkle: 좌하단 작은 점 */}
+                <motion.span
+                  aria-hidden
+                  className="absolute -bottom-0.5 -left-0.5 size-1.5 rounded-full bg-amber-200 shadow-[0_0_6px_rgba(253,230,138,0.95)]"
+                  animate={{ opacity: [0, 1, 0], scale: [0.4, 1, 0.4] }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    delay: 0.6,
+                    ease: "easeInOut",
+                  }}
+                />
+              </div>
+              {/* ============================================================
+                  ▽ 이전 박동(pulse) 디자인 — 복원하려면 위 블록을 주석
+                     처리하고 아래 주석을 풀어 사용하세요.
+              ============================================================ */}
+              {/*
               <motion.div
                 initial={{ scale: 0.95, opacity: 0.9 }}
                 animate={{ scale: [0.95, 1.05, 0.95] }}
@@ -138,6 +188,7 @@ function HeroCard() {
               >
                 <Siren className="size-[20px]" strokeWidth={2.4} />
               </motion.div>
+              */}
             </div>
 
             <div className="flex items-center gap-1.5 self-start rounded-full bg-black/20 px-2.5 py-0.5 text-[11.5px] font-medium text-white group-hover:bg-black/30">
