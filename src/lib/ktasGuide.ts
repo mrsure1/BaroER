@@ -21,10 +21,14 @@ export interface KtasInfo {
   level: KtasLevel;
   /** 한글 + 영문 풀 라벨 (예: "소생 (Resuscitation)"). */
   label: string;
-  /** 한글 단축 라벨 (예: "소생") — 일반인 가독성용 메인 표기. */
+  /** 학술 한글 단축 라벨 (예: "소생"). */
   koLabel: string;
   /** 영문 라벨 (예: "Resuscitation"). */
   enLabel: string;
+  /** 일반인 친화 한글 라벨 — 헤더 메인 표기 (예: "매우위급"). */
+  plainLabel: string;
+  /** 권장 행동 한 줄 (예: "지금 당장 119"). */
+  actionHint: string;
   /** 화면 뱃지 색 키 — globals.css 의 status tone 을 재활용. */
   tone: "critical" | "urgent" | "warn" | "info" | "ok";
   /** 권장 반응 시간 (사용자에게 노출되는 상한). */
@@ -38,6 +42,8 @@ export const KTAS_META: Record<KtasLevel, KtasInfo> = {
     label: "소생 (Resuscitation)",
     koLabel: "소생",
     enLabel: "Resuscitation",
+    plainLabel: "매우위급",
+    actionHint: "지금 당장 119",
     tone: "critical",
     targetMin: 0,
     summary: "즉각적 생명 위협. 지금 바로 119 에 신고하세요.",
@@ -47,6 +53,8 @@ export const KTAS_META: Record<KtasLevel, KtasInfo> = {
     label: "긴급 (Emergent)",
     koLabel: "긴급",
     enLabel: "Emergent",
+    plainLabel: "위급",
+    actionHint: "10분 안에 응급실",
     tone: "urgent",
     targetMin: 10,
     summary: "잠재적 생명 위협. 10 분 이내 전문 처치가 필요합니다.",
@@ -56,6 +64,8 @@ export const KTAS_META: Record<KtasLevel, KtasInfo> = {
     label: "응급 (Urgent)",
     koLabel: "응급",
     enLabel: "Urgent",
+    plainLabel: "응급",
+    actionHint: "30분 안에 응급실",
     tone: "warn",
     targetMin: 30,
     summary: "진행 가능성이 있는 증상. 30 분 이내 응급실 방문을 권장합니다.",
@@ -65,6 +75,8 @@ export const KTAS_META: Record<KtasLevel, KtasInfo> = {
     label: "준응급 (Less Urgent)",
     koLabel: "준응급",
     enLabel: "Less Urgent",
+    plainLabel: "보통",
+    actionHint: "1시간 안에 진료",
     tone: "info",
     targetMin: 60,
     summary: "지속 관찰이 필요한 증상. 1 시간 이내 평가를 권장합니다.",
@@ -74,6 +86,8 @@ export const KTAS_META: Record<KtasLevel, KtasInfo> = {
     label: "비응급 (Non-urgent)",
     koLabel: "비응급",
     enLabel: "Non-urgent",
+    plainLabel: "경미",
+    actionHint: "2시간 안에 진료 권장",
     tone: "ok",
     targetMin: 120,
     summary: "즉시 처치 필요는 낮아요. 증상 변화가 있으면 다시 확인하세요.",
