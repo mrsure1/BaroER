@@ -511,6 +511,9 @@ const SOURCES = [
     width: 179,
     height: 54,
     dark: false,
+    // KTAS 는 두꺼운 산세리프라 같은 픽셀 높이에서도 다른 로고보다
+    // 시각적 무게가 커 보임. 0.78x 로 다운스케일해 광학적 정렬을 맞춘다.
+    scale: 0.78,
   },
   {
     href: "https://www.nfa.go.kr",
@@ -528,33 +531,36 @@ function Footer() {
       <div className="space-y-1 text-[10px] leading-tight text-text-subtle">
         <p className="text-[10px] font-semibold text-text-muted">데이터 제공</p>
         <ul className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
-          {SOURCES.map(({ href, label, src, width, height, dark }) => (
-            <li key={href}>
-              <a
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={`${label} 새 창에서 열기`}
-                title={label}
-                className={cn(
-                  "inline-flex h-6 items-center justify-center rounded-[var(--radius-sm)] border px-1.5 transition-colors",
-                  dark
-                    ? "border-slate-700 bg-slate-700 hover:bg-slate-800"
-                    : "border-border bg-white hover:bg-surface",
-                )}
-              >
-                <Image
-                  src={src}
-                  alt={label}
-                  width={width}
-                  height={height}
-                  style={{ height: LOGO_HEIGHT, width: "auto" }}
-                  className="block max-w-none object-contain"
-                  unoptimized
-                />
-              </a>
-            </li>
-          ))}
+          {SOURCES.map((s) => {
+            const h = LOGO_HEIGHT * (("scale" in s && s.scale) || 1);
+            return (
+              <li key={s.href}>
+                <a
+                  href={s.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`${s.label} 새 창에서 열기`}
+                  title={s.label}
+                  className={cn(
+                    "inline-flex h-6 items-center justify-center rounded-[var(--radius-sm)] border px-1.5 transition-colors",
+                    s.dark
+                      ? "border-slate-700 bg-slate-700 hover:bg-slate-800"
+                      : "border-border bg-white hover:bg-surface",
+                  )}
+                >
+                  <Image
+                    src={s.src}
+                    alt={s.label}
+                    width={s.width}
+                    height={s.height}
+                    style={{ height: h, width: "auto" }}
+                    className="block max-w-none object-contain"
+                    unoptimized
+                  />
+                </a>
+              </li>
+            );
+          })}
         </ul>
         <p className="text-text-subtle/80">
           본 앱은 의료 행위를 대체하지 않습니다 ·{" "}
