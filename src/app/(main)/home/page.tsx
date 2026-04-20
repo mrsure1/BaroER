@@ -539,9 +539,11 @@ function SafetyGuide({ isParamedic }: { isParamedic: boolean }) {
 /**
  * 한 화면(fold) 안에 들어가도록 압축한 데이터 출처 + 의료 면책 푸터.
  *
- * - 각 출처에는 실제 기관 BI/CI(E-Gen·보건복지부·KTAS)를 그대로
- *   사용한다. 119 는 데이터 호출이 없는 단순 다이얼링 대상이라 출처
- *   라벨에서는 제외했다 (정직한 attribution 원칙). 3개 로고는 원본
+ * - 각 출처에는 실제 기관 BI/CI(공공데이터포털·E-Gen·보건복지부·KTAS)
+ *   를 사용한다. 119 는 데이터 호출이 없는 단순 다이얼링 대상이라
+ *   출처 라벨에서는 제외했다 (정직한 attribution 원칙). 공공데이터포털
+ *   은 원본 와이드 배너 BI 가 다른 로고들의 미니멀 톤과 안 어울려
+ *   동일 시각 언어로 재구성한 SVG 사본을 사용한다. 4개 로고는 원본
  *   종횡비가 모두 다르므로
  *   "동일한 시각적 크기"는 **높이를 고정**하고 너비를 종횡비에 맞춰
  *   자동 조절하여 달성한다. (Image.style 의 height + width:auto + 원본
@@ -554,6 +556,17 @@ function SafetyGuide({ isParamedic }: { isParamedic: boolean }) {
 const LOGO_HEIGHT = 16;
 
 const SOURCES = [
+  {
+    href: "https://www.data.go.kr",
+    label: "공공데이터포털 (data.go.kr)",
+    // 원본 공식 BI 는 6:1 와이드 파란 배너라 다른 로고들의 미니멀 톤과
+    // 안 맞아, 동일 시각 언어(투명 배경 워드마크, ~2.5:1)로 재구성한
+    // SVG 사본을 사용한다. 색은 시그니처 블루(#1c6cb5).
+    src: "/logos/data-go-kr.svg",
+    width: 240,
+    height: 96,
+    dark: false,
+  },
   {
     href: "https://www.e-gen.or.kr",
     label: "중앙응급의료센터 E-Gen",

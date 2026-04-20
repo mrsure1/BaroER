@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 96" fill="#1c6cb5" role="img" aria-label="공공데이터포털 DATA.GO.KR">
+  <style>
+    .ko { font: 600 22px "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif; letter-spacing: -0.4px; }
+    .en { font: 900 44px "Pretendard Variable", Pretendard, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif; letter-spacing: -1.6px; }
+  </style>
+  <text x="50%" y="32" text-anchor="middle" class="ko">공공데이터포털</text>
+  <text x="50%" y="84" text-anchor="middle" class="en">DATA.GO.KR</text>
+</svg>
