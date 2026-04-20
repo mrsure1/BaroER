@@ -29,6 +29,12 @@ import { ScreenHeader } from "@/components/common/ScreenHeader";
 import { NaverMap } from "@/components/maps/NaverMap";
 import { loadNaverMaps } from "@/lib/naverMaps";
 import { CAPACITY_META } from "@/lib/mockHospitals";
+import {
+  deriveCareNeeds,
+  matchedCareLabels,
+  specialtyMatchScore,
+  type CareNeed,
+} from "@/lib/hospitalCareMatching";
 import { fetchNearbyHospitals, fetchHospitalTotals } from "@/services/hospitals";
 import { reverseGeocode } from "@/services/geocode";
 import { getNavApp, launchNavigation, type NavAppId } from "@/lib/navApps";
@@ -65,6 +71,11 @@ export default function SearchResultsPage() {
   const ageBand = useSearchStore((s) => s.ageBand);
   const notes = useSearchStore((s) => s.notes);
   const addHistory = useHistoryStore((s) => s.add);
+
+  const careNeeds = useMemo(
+    () => deriveCareNeeds(symptoms, ageBand, gender),
+    [symptoms, ageBand, gender],
+  );
 
   const [view, setView] = useState<View>("list");
   const [sort, setSort] = useState<Sort>("eta");
@@ -153,11 +164,31 @@ export default function SearchResultsPage() {
 
   const hospitals = useMemo(() => {
     const list = [...(data?.hospitals ?? [])];
-    if (sort === "eta") list.sort((a, b) => a.etaMin - b.etaMin);
-    if (sort === "distance") list.sort((a, b) => a.distanceKm - b.distanceKm);
+    const byCare = (a: Hospital, b: Hospital) => {
+      if (careNeeds.length === 0) return 0;
+      return specialtyMatchScore(careNeeds, b.specialtyFit) - specialtyMatchScore(careNeeds, a.specialtyFit);
+    };
+    if (sort === "eta") {
+      list.sort((a, b) => {
+        const c = byCare(a, b);
+        if (c !== 0) return c;
+        return a.etaMin - b.etaMin;
+      });
+    }
+    if (sort === "distance") {
+      list.sort((a, b) => {
+        const c = byCare(a, b);
+        if (c !== 0) return c;
+        return a.distanceKm - b.distanceKm;
+      });
+    }
     if (sort === "capacity") {
       const score = { available: 0, busy: 1, full: 2, unknown: 3 } as const;
-      list.sort((a, b) => score[a.capacity] - score[b.capacity]);
+      list.sort((a, b) => {
+        const c = byCare(a, b);
+        if (c !== 0) return c;
+        return score[a.capacity] - score[b.capacity];
+      });
     }
     // 선택된 hpid 항목에 lazy fetch 한 정원 정보 머지 (이미 있으면 보존).
     if (selectedId && selectedTotals) {
@@ -166,7 +197,7 @@ export default function SearchResultsPage() {
       );
     }
     return list;
-  }, [data, sort, selectedId, selectedTotals]);
+  }, [data, sort, selectedId, selectedTotals, careNeeds]);
 
   const availableCount = hospitals.filter((h) => h.capacity === "available").length;
 
@@ -272,6 +303,23 @@ export default function SearchResultsPage() {
           </Card>
         )}
 
+        {careNeeds.length > 0 && (
+          <Card className="mb-3 border-primary/35 bg-primary-soft/50 p-3">
+            <div className="flex items-start gap-2">
+              <Stethoscope className="mt-0.5 size-4 shrink-0 text-primary" />
+              <div className="min-w-0 text-[12.5px] leading-relaxed text-text">
+                <p className="font-semibold text-text">증상 맞춤 정렬·표시</p>
+                <p className="mt-1 text-text-muted">
+                  화상·임신·소아 등 선택에 맞춰, 기관명·권역응급·소아응급 병상 보고 여부로{" "}
+                  <strong className="text-text">적합도를 추정</strong>해 목록 상단에 두었어요. 공공 API에는
+                  전문과 코드가 없어 <strong className="text-text">참고용</strong>이며, 이송·치료는 119·의료진
+                  판단이 우선입니다.
+                </p>
+              </div>
+            </div>
+          </Card>
+        )}
+
         <Card className="mb-3 px-3 py-2">
           <RadiusSlider value={radiusKm} onCommit={setRadiusKm} />
         </Card>
@@ -331,6 +379,7 @@ export default function SearchResultsPage() {
                     <HospitalCard
                       key={h.id}
                       hospital={h}
+                      careNeeds={careNeeds}
                       index={i}
                       active={selectedId === h.id}
                       onTap={() => setSelectedId(h.id)}
@@ -487,18 +536,25 @@ function SortMenu({ sort, onChange }: { sort: Sort; onChange: (s: Sort) => void 
 
 function HospitalCard({
   hospital,
+  careNeeds,
   index,
   active,
   onTap,
   onDirections,
 }: {
   hospital: Hospital;
+  careNeeds: CareNeed[];
   index: number;
   active: boolean;
   onTap: () => void;
   onDirections: () => void;
 }) {
   const meta = CAPACITY_META[hospital.capacity];
+  const careScore = specialtyMatchScore(careNeeds, hospital.specialtyFit);
+  const careLabels =
+    careNeeds.length > 0 && careScore > 0
+      ? matchedCareLabels(careNeeds, hospital.specialtyFit)
+      : [];
   const er = hospital.realtime?.er ?? null;
   const erTotal = hospital.totals?.er ?? null;
   const erDisplay =
@@ -520,6 +576,7 @@ function HospitalCard({
         className={cn(
           "cursor-pointer overflow-hidden p-0 transition-all",
           active && "ring-2 ring-primary",
+          careScore >= 120 && "ring-1 ring-primary/50",
         )}
       >
         <div className="flex items-start gap-3 p-4">
@@ -610,8 +667,21 @@ function HospitalCard({
               </p>
             )}
 
-            {hospital.tags.length > 0 && (
+            {careLabels.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-1">
+                {careLabels.map((t) => (
+                  <span
+                    key={t}
+                    className="rounded-full bg-primary-soft px-2 py-0.5 text-[11px] font-semibold text-primary"
+                  >
+                    {t}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {hospital.tags.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1">
                 {hospital.tags.map((t) => (
                   <span key={t} className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] font-medium text-text-muted">
                     {t}

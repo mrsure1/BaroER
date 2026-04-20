@@ -116,6 +116,7 @@ const SYMPTOM_SEVERITY: Record<SymptomId, KtasLevel> = {
   fracture: 3,
   pain: 3,
   burn: 3,
+  pregnancy: 3,
   headache: 4,
 };
 
@@ -252,6 +253,18 @@ const GENERAL_GUIDE: Record<SymptomId, GuidanceBlock> = {
       "물집을 일부러 터뜨리지 마세요.",
     ],
   },
+  pregnancy: {
+    heading: "임신·분만 관련",
+    steps: [
+      "반복되는 복통, 질 출혈, 양수 파수 의심, 태동 감소는 **즉시 119 또는 응급실**.",
+      "머리를 낮추고 옆으로 눕히거나 편한 자세로 안정.",
+      "임신 주수·예정일·쌍태아 여부를 알면 상담 시 말해 주세요.",
+      "진통 간격·출혈량·어지러움을 간단히 기록해 두세요.",
+    ],
+    donts: [
+      "출혈이 많거나 쇼크 증상이면 이동만으로 지체하지 말고 신고를 우선하세요.",
+    ],
+  },
   headache: {
     heading: "심한 두통",
     steps: [
@@ -337,6 +350,15 @@ const PARAMEDIC_GUIDE: Record<SymptomId, GuidanceBlock> = {
       "20 분 이상 냉각은 저체온 위험 — 15~20℃ 생리식염수 드레싱.",
       "흡입화상 의심(얼굴 그을음·목쉰소리) — 조기 기도 확보.",
       "Parkland: TBSA × kg × 4ml LR (반은 8 시간 내).",
+    ],
+  },
+  pregnancy: {
+    heading: "산과 응급 — 이송 중",
+    steps: [
+      "좌측으로 기울이거나 자궁을 좌측으로 밀어 대정맥 압박 완화.",
+      "질 출혈량·패드 수·진통 간격 기록.",
+      "태아 심음·모체 BP 맥박 모니터 — 쇼크 징후 시 볼러스.",
+      "조산·자궁파열·전치태반 의심 시 산과 수용 가능 병원 사전 연락.",
     ],
   },
   headache: {
