@@ -264,7 +264,7 @@ function ContextCard({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.08 }}
-      className="grid grid-cols-[1.3fr_1fr] gap-2.5"
+      className="grid grid-cols-[1.5fr_1fr] gap-2.5"
     >
       {isParamedic ? (
         <ParamedicContext />
@@ -320,41 +320,35 @@ function Emergency119Button() {
           "btn-119",
           "relative flex h-full flex-col justify-between overflow-hidden rounded-[var(--radius-md)]",
           "border border-status-full/35",
-          // 위→아래 광택 그라데이션 — "위에서 빛이 떨어지는" 라이팅
-          "bg-gradient-to-b from-white via-status-full-soft/60 to-status-full-soft",
-          "p-3",
+          // 119 PNG 자체가 흰 배경 + 빨간 글자라, 카드 내부도 흰색으로
+          // 통일해 로고가 자연스럽게 녹아들게 한다. 입체감은 하단의 5층
+          // 솔리드 측면 베벨 + inset 음영 (.btn-119 클래스) 이 담당.
+          "bg-white",
+          "p-2.5",
         )}
       >
-        {/* 안쪽 상단의 미세한 하이라이트 — 유리/플라스틱 버튼의 광택 */}
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-white/85 to-transparent"
-        />
-
         <div className="relative flex items-center gap-1.5">
-          <span className="grid size-7 place-items-center rounded-full bg-status-full text-white">
-            <Phone className="size-[14px]" />
+          <span className="grid size-6 place-items-center rounded-full bg-status-full text-white">
+            <Phone className="size-[12px]" />
           </span>
-          <span className="text-[10.5px] font-semibold uppercase tracking-wider text-status-full">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-status-full">
             긴급
           </span>
         </div>
 
         <div className="relative">
-          {/* 119 BI — 텍스트 대신 공식 로고 사용 */}
+          {/* 119 BI — 텍스트 대신 공식 로고 사용 (흰 배경 위에 자연스럽게 안착) */}
           <Image
             src="/logos/119.png"
             alt="119"
             width={202}
             height={88}
-            // 카드 폭 안에서 안정적으로 보이도록 height 기준으로 축소.
-            // h-7 (28px) ≈ 텍스트 22px 보다 살짝 큼 → 시각적 무게 유지.
-            style={{ height: 28, width: "auto" }}
+            style={{ height: 22, width: "auto" }}
             className="block max-w-none"
             priority={false}
             unoptimized
           />
-          <p className="mt-0.5 text-[11px] font-medium text-status-full/80">
+          <p className="mt-0.5 text-[10.5px] font-medium text-status-full/85">
             지금 바로 연결
           </p>
         </div>
