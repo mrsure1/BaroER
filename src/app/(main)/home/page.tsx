@@ -1,15 +1,13 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { motion } from "motion/react";
 import {
   Activity,
-  Building2,
   ChevronRight,
   Clock,
-  Database,
   FilePlus2,
-  Flame,
   HeartPulse,
   History,
   Hospital,
@@ -17,7 +15,6 @@ import {
   ShieldCheck,
   Siren,
   Sparkles,
-  Stethoscope,
   Wifi,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -478,72 +475,95 @@ function SafetyGuide({ isParamedic }: { isParamedic: boolean }) {
 /**
  * 한 화면(fold) 안에 들어가도록 압축한 데이터 출처 + 의료 면책 푸터.
  *
- * - 각 출처에는 디자인 시스템과 일관된 모노크롬(흑백) 카테고리 아이콘만
- *   부착한다. 실제 기관 BI/CI(공공데이터포털·E-Gen·보건복지부·KTAS·소방청)
- *   는 별도 사용 신청 + 색상·여백·크기 가이드 준수가 필요해, 단순 출처
- *   표기 목적의 본 화면에서는 lucide 모노크롬 심볼로 대체한다 (저작권 안전).
+ * - 각 출처에는 실제 기관 BI/CI(공공데이터포털·E-Gen·보건복지부·KTAS·소방청
+ *   119)를 그대로 사용한다. 5개 로고는 원본 종횡비가 모두 다르므로
+ *   "동일한 시각적 크기"는 **높이를 고정**하고 너비를 종횡비에 맞춰
+ *   자동 조절하여 달성한다. (Image.style 의 height + width:auto + 원본
+ *   intrinsic width/height 가 함께 작동해 layout shift 없이 비율 유지)
+ * - E-Gen 로고는 흰색 텍스트 + 투명 배경이라 일반 칩에서는 안 보이므로
+ *   E-Gen 칩만 어두운 배경(slate-700)으로 두어 가시성을 확보한다.
  * - "지도" 라인은 NaverMap SDK 가 지도 위에 © NAVER 워터마크를 자동 표시
  *   하므로 약관상 별도 텍스트 attribution 없이도 무방.
  */
+const LOGO_HEIGHT = 16;
+
 const SOURCES = [
   {
     href: "https://www.data.go.kr",
     label: "공공데이터포털",
-    short: "공공데이터포털",
-    Icon: Database,
+    src: "/logos/data-go-kr.png",
+    width: 591,
+    height: 99,
+    dark: false,
   },
   {
     href: "https://www.e-gen.or.kr",
     label: "중앙응급의료센터 E-Gen",
-    short: "E-Gen",
-    Icon: Activity,
+    src: "/logos/egen.png",
+    width: 160,
+    height: 60,
+    dark: true,
   },
   {
     href: "https://www.mohw.go.kr",
     label: "보건복지부",
-    short: "보건복지부",
-    Icon: Building2,
+    src: "/logos/mohw.png",
+    width: 491,
+    height: 135,
+    dark: false,
   },
   {
     href: "https://www.ktas.org",
     label: "대한응급의학회 KTAS",
-    short: "KTAS",
-    Icon: Stethoscope,
+    src: "/logos/ktas.png",
+    width: 179,
+    height: 54,
+    dark: false,
   },
   {
     href: "https://www.nfa.go.kr",
     label: "소방청 119",
-    short: "119",
-    Icon: Flame,
+    src: "/logos/119.png",
+    width: 202,
+    height: 88,
+    dark: false,
   },
 ] as const;
 
 function Footer() {
   return (
     <footer className="mt-auto pt-0.5 text-center">
-      <div className="space-y-0.5 text-[10px] leading-tight text-text-subtle">
-        <p className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5">
-          <span className="font-semibold text-text-muted">데이터 제공</span>
-          {SOURCES.map(({ href, label, short, Icon }) => (
-            <span key={href} className="inline-flex items-center gap-1">
-              <span className="text-text-subtle/60">·</span>
+      <div className="space-y-1 text-[10px] leading-tight text-text-subtle">
+        <p className="text-[10px] font-semibold text-text-muted">데이터 제공</p>
+        <ul className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
+          {SOURCES.map(({ href, label, src, width, height, dark }) => (
+            <li key={href}>
               <a
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={`${label} 새 창에서 열기`}
-                className="inline-flex items-center gap-1 underline-offset-2 transition-colors hover:text-text hover:underline"
+                title={label}
+                className={cn(
+                  "inline-flex h-6 items-center justify-center rounded-[var(--radius-sm)] border px-1.5 transition-colors",
+                  dark
+                    ? "border-slate-700 bg-slate-700 hover:bg-slate-800"
+                    : "border-border bg-white hover:bg-surface",
+                )}
               >
-                <Icon
-                  className="size-3 text-text-muted"
-                  strokeWidth={2}
-                  aria-hidden
+                <Image
+                  src={src}
+                  alt={label}
+                  width={width}
+                  height={height}
+                  style={{ height: LOGO_HEIGHT, width: "auto" }}
+                  className="block max-w-none object-contain"
+                  unoptimized
                 />
-                <span>{short}</span>
               </a>
-            </span>
+            </li>
           ))}
-        </p>
+        </ul>
         <p className="text-text-subtle/80">
           본 앱은 의료 행위를 대체하지 않습니다 ·{" "}
           <span className="text-status-full/80">위급 시 즉시 119</span>
