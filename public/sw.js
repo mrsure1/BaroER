@@ -1,6 +1,6 @@
 /* BaroER service worker — vanilla, no Workbox. Hand-tuned for a small PWA. */
 
-const VERSION = "v1";
+const VERSION = "v2";
 const APP_SHELL = `baroer-shell-${VERSION}`;
 const RUNTIME = `baroer-runtime-${VERSION}`;
 
@@ -14,6 +14,7 @@ const PRECACHE_URLS = [
   "/apple-touch-icon.png",
   "/icon-192.png",
   "/icon-512.png",
+  "/icon-maskable-512.png",
 ];
 
 self.addEventListener("install", (event) => {

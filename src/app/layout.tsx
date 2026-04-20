@@ -18,8 +18,8 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   formatDetection: { telephone: true },
   icons: {
-    icon: "/favicon.png",
-    apple: "/apple-touch-icon.png",
+    icon: "/favicon.png?v=2",
+    apple: "/apple-touch-icon.png?v=2",
   },
   openGraph: {
     title: "바로응급실",
