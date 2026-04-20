@@ -317,20 +317,12 @@ function Emergency119Button() {
     >
       <div
         className={cn(
+          "btn-119",
           "relative flex h-full flex-col justify-between overflow-hidden rounded-[var(--radius-md)]",
           "border border-status-full/35",
           // 위→아래 광택 그라데이션 — "위에서 빛이 떨어지는" 라이팅
           "bg-gradient-to-b from-white via-status-full-soft/60 to-status-full-soft",
           "p-3",
-          // 평상시: inset 상단 highlight + 하단 dark + 5층 솔리드 edge
-          // (각 레이어를 1px 씩 누적하며 점점 짙어지게 해 면이 곡선처럼 깎인 듯)
-          "shadow-[inset_0_1.5px_0_rgba(255,255,255,0.95),inset_0_-1px_0_rgba(120,20,20,0.22),0_1px_0_0_#c52828,0_2px_0_0_#b91c1c,0_3px_0_0_#a31616,0_4px_0_0_#881010,0_5px_0_0_#6e0c0c]",
-          "transition-shadow duration-100 ease-out",
-          // 호버: 위치/크기는 그대로, 상단 highlight 만 한 단계 더 밝게
-          "group-hover:shadow-[inset_0_1.5px_0_rgba(255,255,255,1),inset_0_-1px_0_rgba(120,20,20,0.22),0_1px_0_0_#c52828,0_2px_0_0_#b91c1c,0_3px_0_0_#a31616,0_4px_0_0_#881010,0_5px_0_0_#6e0c0c]",
-          // 클릭: 5층 edge 모두 사라지고 inset 이 "눌린 안쪽 그림자" 로 전환
-          // → 카드는 active:translate-y-[5px] 로 정확히 자기 발자국에 안착
-          "group-active:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),inset_0_2px_3px_rgba(120,20,20,0.35)]",
         )}
       >
         {/* 안쪽 상단의 미세한 하이라이트 — 유리/플라스틱 버튼의 광택 */}
