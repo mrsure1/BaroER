@@ -327,7 +327,7 @@ function Emergency119Button() {
           "p-2.5",
         )}
       >
-        <div className="relative flex items-center gap-1.5">
+        <div className="relative flex items-center justify-center gap-1.5">
           <span className="grid size-6 place-items-center rounded-full bg-status-full text-white">
             <Phone className="size-[12px]" />
           </span>
@@ -336,7 +336,7 @@ function Emergency119Button() {
           </span>
         </div>
 
-        <div className="relative">
+        <div className="relative flex flex-col items-center text-center">
           {/* 119 BI — 텍스트 대신 공식 로고 사용 (흰 배경 위에 자연스럽게 안착) */}
           <Image
             src="/logos/119.png"
@@ -348,7 +348,7 @@ function Emergency119Button() {
             priority={false}
             unoptimized
           />
-          <p className="mt-0.5 text-[10.5px] font-medium text-status-full/85">
+          <p className="mt-0.5 w-full text-[10.5px] font-medium text-status-full/85">
             지금 바로 연결
           </p>
         </div>
