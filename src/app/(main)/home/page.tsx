@@ -475,8 +475,8 @@ function SafetyGuide({ isParamedic }: { isParamedic: boolean }) {
 /**
  * 한 화면(fold) 안에 들어가도록 압축한 데이터 출처 + 의료 면책 푸터.
  *
- * - 각 출처에는 실제 기관 BI/CI(공공데이터포털·E-Gen·보건복지부·KTAS·소방청
- *   119)를 그대로 사용한다. 5개 로고는 원본 종횡비가 모두 다르므로
+ * - 각 출처에는 실제 기관 BI/CI(E-Gen·보건복지부·KTAS·소방청 119)를
+ *   그대로 사용한다. 4개 로고는 원본 종횡비가 모두 다르므로
  *   "동일한 시각적 크기"는 **높이를 고정**하고 너비를 종횡비에 맞춰
  *   자동 조절하여 달성한다. (Image.style 의 height + width:auto + 원본
  *   intrinsic width/height 가 함께 작동해 layout shift 없이 비율 유지)
@@ -488,14 +488,6 @@ function SafetyGuide({ isParamedic }: { isParamedic: boolean }) {
 const LOGO_HEIGHT = 16;
 
 const SOURCES = [
-  {
-    href: "https://www.data.go.kr",
-    label: "공공데이터포털",
-    src: "/logos/data-go-kr.png",
-    width: 591,
-    height: 99,
-    dark: false,
-  },
   {
     href: "https://www.e-gen.or.kr",
     label: "중앙응급의료센터 E-Gen",
