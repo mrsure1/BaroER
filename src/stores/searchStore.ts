@@ -20,7 +20,6 @@ export const SYMPTOMS: readonly Symptom[] = [
   { id: "allergy", label: "알레르기 반응", emoji: "🤧" },
   { id: "seizure", label: "발작", emoji: "⚡", critical: true },
   { id: "burn", label: "화상", emoji: "🔥" },
-  { id: "pregnancy", label: "임신·분만 관련", emoji: "🤰" },
   { id: "headache", label: "두통", emoji: "🤯" },
 ];
 

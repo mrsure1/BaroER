@@ -1,17 +1,6 @@
 export type CapacityLevel = "available" | "busy" | "full" | "unknown";
 
 /**
- * 증상 맞춤 힌트 — 공공 API에 전문과 코드가 없어 기관명·유형·소아 병상 보고로 추정.
- * 의료적 판단이 아니라 리스트 정렬·안내용 참고 데이터다.
- */
-export interface SpecialtyFit {
-  burnNameHint: boolean;
-  obstetricNameHint: boolean;
-  pediatricErBedsReported: boolean;
-  regionalEr: boolean;
-}
-
-/**
  * 응급실 실시간 가용 자원 — 공공데이터 응급의료정보 API
  * `getEmrrmRltmUsefulSckbdInfoInqire` 응답의 핵심 필드를 정규화한 형태.
  * 값이 알 수 없거나 미보고면 `null`.
@@ -82,8 +71,6 @@ export interface Hospital {
   address: string;
   tel: string;
   tags: string[];
-  /** 증상(화상·임신·소아 등) 맞춤 정렬·배지용 휴리스틱 */
-  specialtyFit?: SpecialtyFit;
 }
 
 export interface HospitalSearchRequest {

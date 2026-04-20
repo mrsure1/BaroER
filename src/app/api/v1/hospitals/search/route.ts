@@ -7,7 +7,6 @@ import type {
   RealtimeBeds,
 } from "@/types/hospital";
 import { MOCK_HOSPITALS } from "@/lib/mockHospitals";
-import { computeSpecialtyFit } from "@/lib/hospitalCareMatching";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -392,40 +391,21 @@ function mockResponse(
   origin: { lat: number; lng: number },
   limit: number,
 ): HospitalSearchResponse {
-  const hospitals: Hospital[] = MOCK_HOSPITALS.slice(0, limit).map((m, i) => {
-    const rt: RealtimeBeds | undefined =
-      i === 2
-        ? {
-            er: m.bedsAvailable,
-            general: null,
-            surgery: null,
-            icuMed: null,
-            icuSurg: null,
-            icuNeuro: null,
-            icuChest: null,
-            pediatricEr: 3,
-            isolation: null,
-            updatedAt: null,
-          }
-        : undefined;
-    return {
-      id: m.id,
-      name: m.name,
-      type: m.type,
-      lat: 37.5665 + (i - 2) * 0.01,
-      lng: 126.978 + (i - 2) * 0.012,
-      distanceKm: m.distanceKm,
-      etaMin: m.etaMin,
-      capacity: m.capacity,
-      bedsAvailable: m.bedsAvailable,
-      bedsTotal: m.bedsTotal,
-      address: m.address,
-      tel: m.tel,
-      tags: m.tags,
-      realtime: rt,
-      specialtyFit: computeSpecialtyFit(m.name, m.type, rt),
-    };
-  });
+  const hospitals: Hospital[] = MOCK_HOSPITALS.slice(0, limit).map((m, i) => ({
+    id: m.id,
+    name: m.name,
+    type: m.type,
+    lat: 37.5665 + (i - 2) * 0.01,
+    lng: 126.978 + (i - 2) * 0.012,
+    distanceKm: m.distanceKm,
+    etaMin: m.etaMin,
+    capacity: m.capacity,
+    bedsAvailable: m.bedsAvailable,
+    bedsTotal: m.bedsTotal,
+    address: m.address,
+    tel: m.tel,
+    tags: m.tags,
+  }));
   return {
     source: "mock",
     hospitals,
@@ -514,7 +494,6 @@ export async function GET(req: NextRequest) {
         bedsAvailable,
         bedsTotal: 0,
         realtime: rt,
-        specialtyFit: computeSpecialtyFit(h.name, h.type, rt),
       };
     });
 
