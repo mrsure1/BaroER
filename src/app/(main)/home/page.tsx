@@ -29,9 +29,10 @@ const symptomMap = new Map(SYMPTOMS.map((s) => [s.id, s] as const));
 /**
  * 홈 화면 디자인 원칙
  * --------------------------------------------------------------
- * 1) PWA/모바일(주소창 없음) 한 화면에 헤더~데이터 출처까지 보이도록
- *    섹션 gap·패딩·타이포를 압축. `mt-auto` 로 푸터를 밀지 않는다 — 사이 빈칸 방지.
- * 2) 매우 작은 기기에서는 `overflow-y-auto` 로만 짧게 스크롤 허용.
+ * 1) 부모(main 레이아웃)가 남긴 높이(탭바 제외)를 `h-full` 로 꽉 채운다.
+ * 2) 빨간 히어로는 뷰포트 기준 약 1/3(`33dvh`) — clamp 로 초소형·대형폰에서도 비율 유지.
+ * 3) 히어로 아래(신뢰·컨텍스트·안전)는 `flex-1 min-h-0 overflow-y-auto` 로만 스크롤.
+ * 4) 데이터 제공 푸터는 스크롤 영역 밖·탭바 바로 위에 고정 노출(shrink-0).
  */
 export default function HomePage() {
   const user = useAuthStore((s) => s.user);
@@ -39,27 +40,38 @@ export default function HomePage() {
   const recent = useHistoryStore((s) => s.entries[0]);
 
   return (
-    <div
-      className={cn(
-        "mx-auto flex w-full max-w-[520px] flex-col gap-1.5 px-4 pb-1",
-        "pt-[calc(env(safe-area-inset-top)+2px)]",
-        "min-h-0 flex-1",
-        "max-h-[calc(100dvh-72px-env(safe-area-inset-bottom)-env(safe-area-inset-top))]",
-        "overflow-x-hidden overflow-y-auto",
-      )}
-    >
-      <Header />
+    <>
+      <div
+        className={cn(
+          /*
+           * 홈은 "한 화면 앱" 레이아웃. 푸터는 아래의 Footer 컴포넌트가
+           * `fixed` 로 탭바 바로 위에 스스로 붙으므로, 본문은 푸터 높이만큼
+           * 하단 여백(`pb-[...]`)만 확보해 주면 된다.
+           */
+          "mx-auto flex w-full max-w-[520px] flex-col overflow-hidden",
+          "h-[calc(100dvh-var(--bottom-nav-pad)-env(safe-area-inset-bottom))]",
+          "px-4 pt-[calc(env(safe-area-inset-top)+6px)] pb-[var(--home-footer-pad)]",
+        )}
+      >
+        <Header />
 
-      <HeroCard />
+        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+          {/* 앱 뷰포트 기준 약 1/3 — dvh 로 주소창 유무와 무관하게 일관 */}
+          <div className="w-full shrink-0 basis-auto [height:clamp(184px,33dvh,300px)]">
+            <HeroCard />
+          </div>
 
-      <TrustStrip />
+          <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-y-contain">
+            <TrustStrip />
+            <ContextCard isParamedic={isParamedic} recent={recent} />
+            <SafetyGuide isParamedic={isParamedic} />
+          </div>
+        </div>
+      </div>
 
-      <ContextCard isParamedic={isParamedic} recent={recent} />
-
-      <SafetyGuide isParamedic={isParamedic} />
-
+      {/* 탭바 바로 위 고정 푸터 */}
       <Footer />
-    </div>
+    </>
   );
 }
 
@@ -69,9 +81,9 @@ export default function HomePage() {
 
 function Header() {
   return (
-    <header className="flex items-center gap-2 py-0">
-      <Logo height={24} priority />
-      <h1 className="min-w-0 flex-1 text-[14.5px] font-bold leading-[1.25] tracking-tight text-text">
+    <header className="mb-1 flex shrink-0 items-center gap-2.5 py-0.5">
+      <Logo height={28} priority />
+      <h1 className="min-w-0 flex-1 text-[15px] font-bold leading-[1.25] tracking-tight text-text sm:text-[16px]">
         응급실이 필요할 때,{" "}
         <span className="bg-gradient-to-r from-primary to-primary-hover bg-clip-text text-transparent">
           바로 연결해 드릴게요.
@@ -87,9 +99,10 @@ function HeroCard() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
+      className="h-full min-h-0"
     >
-      <Link href="/search" className="group block">
-        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-primary via-primary to-primary-hover p-0 shadow-[var(--shadow-lg)]">
+      <Link href="/search" className="group block h-full min-h-0">
+        <Card className="relative flex h-full min-h-0 flex-col overflow-hidden border-0 bg-gradient-to-br from-primary via-primary to-primary-hover p-0 shadow-[var(--shadow-lg)]">
           <div
             aria-hidden
             className="pointer-events-none absolute -right-10 -top-10 size-56 rounded-full bg-white/15 blur-2xl"
@@ -99,21 +112,21 @@ function HeroCard() {
             className="pointer-events-none absolute -bottom-20 -left-6 size-64 rounded-full bg-white/10 blur-3xl"
           />
 
-          <div className="relative flex flex-col gap-1.5 p-2.5">
-            <div className="flex items-center gap-1 self-start rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white backdrop-blur-sm">
-              <Sparkles className="size-2.5" />
+          <div className="relative flex h-full min-h-0 flex-1 flex-col justify-between gap-2 p-3 sm:p-3.5">
+            <div className="flex items-center gap-1.5 self-start rounded-full bg-white/20 px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-wider text-white backdrop-blur-sm sm:text-[11px]">
+              <Sparkles className="size-3 shrink-0" />
               실시간 응급실 검색
             </div>
 
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <h2 className="text-[15px] font-bold leading-[1.2] text-white">
-                  환자 상태 입력 후
+            <div className="flex min-h-0 flex-1 items-center justify-between gap-3">
+              <div className="min-w-0 py-0.5">
+                <h2 className="text-[16px] font-bold leading-[1.2] text-white sm:text-[17px]">
+                  환자 상태를 입력하고
                   <br />
-                  가까운 응급실 찾기
+                  가장 가까운 응급실 찾기
                 </h2>
-                <p className="mt-0.5 text-[10.5px] leading-snug text-white/85">
-                  병상 · 소요시간 · 길안내
+                <p className="mt-1 text-[11.5px] leading-snug text-white/90 sm:text-[12px]">
+                  병상 · 예상 소요 시간 · 길안내까지 한 번에
                 </p>
               </div>
               {/* ============================================================
@@ -128,7 +141,7 @@ function HeroCard() {
                   "회전 + 반짝" 또는 "박동(pulse)" 블록 중 원하는 디자인의
                   주석을 풀어서 사용하세요.
               ============================================================ */}
-              <div className="relative size-9 shrink-0">
+              <div className="relative size-11 shrink-0 sm:size-12">
                 {/* 외곽 경광등 글로우 — 1s 주기로 ON/OFF */}
                 <motion.div
                   aria-hidden
@@ -144,8 +157,8 @@ function HeroCard() {
                   transition={{ duration: 1.0, repeat: Infinity, ease: "easeInOut" }}
                 />
                 {/* 가운데 아이콘 — 정지 */}
-                <div className="absolute inset-[2px] grid place-items-center rounded-full bg-white text-primary shadow-lg">
-                  <Siren className="size-[15px]" strokeWidth={2.4} />
+                <div className="absolute inset-[3px] grid place-items-center rounded-full bg-white text-primary shadow-xl sm:inset-[3px]">
+                  <Siren className="size-[17px] sm:size-[18px]" strokeWidth={2.4} />
                 </div>
                 {/* sparkle: 우상단 — 같은 1s 템포, 경광등 ON 순간에 함께 반짝 */}
                 <motion.span
@@ -197,9 +210,9 @@ function HeroCard() {
               */}
             </div>
 
-            <div className="flex items-center gap-1 self-start rounded-full bg-black/20 px-2 py-0.5 text-[11px] font-medium text-white group-hover:bg-black/30">
+            <div className="flex items-center gap-1.5 self-start rounded-full bg-black/20 px-3 py-1 text-[12px] font-semibold text-white group-hover:bg-black/30">
               시작하기
-              <ChevronRight className="size-3 transition-transform group-hover:translate-x-0.5" />
+              <ChevronRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
             </div>
           </div>
         </Card>
@@ -221,15 +234,15 @@ function TrustStrip() {
     { Icon: Clock, big: "24h", label: "야간·주말 운영 표시" },
   ];
   return (
-      <Card className="grid grid-cols-3 divide-x divide-border p-0">
+      <Card className="grid shrink-0 grid-cols-3 divide-x divide-border p-0">
       {stats.map(({ Icon, big, label }) => (
         <div
           key={label}
-          className="flex flex-col items-center gap-0 px-1.5 py-1 text-center"
+          className="flex flex-col items-center gap-0.5 px-2 py-2 text-center"
         >
-          <Icon className="size-3 text-primary" strokeWidth={2.2} />
-          <p className="text-[13px] font-bold leading-none text-text">{big}</p>
-          <p className="text-[9.5px] leading-tight text-text-muted">{label}</p>
+          <Icon className="size-3.5 text-primary" strokeWidth={2.2} />
+          <p className="text-[14px] font-bold leading-none text-text sm:text-[14.5px]">{big}</p>
+          <p className="text-[10.5px] leading-tight text-text-muted sm:text-[11px]">{label}</p>
         </div>
       ))}
     </Card>
@@ -253,7 +266,7 @@ function ContextCard({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.08 }}
-      className="grid grid-cols-[1.45fr_1fr] gap-1.5"
+      className="grid min-h-[100px] shrink-0 grid-cols-[1.5fr_1fr] gap-2 sm:min-h-[108px]"
     >
       {isParamedic ? (
         <ParamedicContext />
@@ -300,27 +313,27 @@ function Emergency119Button() {
       href="tel:119"
       aria-label="119 긴급 전화 걸기"
       className={cn(
-        "group block select-none transition-transform duration-100 ease-out",
+        "group block h-full min-h-0 select-none transition-transform duration-100 ease-out",
         "active:translate-y-[5px]",
       )}
     >
       <div
         className={cn(
           "btn-119",
-          "relative flex h-full flex-col justify-between overflow-hidden rounded-[var(--radius-md)]",
+          "relative flex h-full min-h-0 flex-col justify-between overflow-hidden rounded-[var(--radius-md)]",
           "border border-status-full/35",
           // 119 PNG 자체가 흰 배경 + 빨간 글자라, 카드 내부도 흰색으로
           // 통일해 로고가 자연스럽게 녹아들게 한다. 입체감은 하단의 5층
           // 솔리드 측면 베벨 + inset 음영 (.btn-119 클래스) 이 담당.
           "bg-white",
-          "p-2",
+          "p-2.5",
         )}
       >
-        <div className="relative flex items-center justify-center gap-1">
-          <span className="grid size-5 place-items-center rounded-full bg-status-full text-white">
-            <Phone className="size-[11px]" />
+        <div className="relative flex items-center justify-center gap-1.5">
+          <span className="grid size-6 place-items-center rounded-full bg-status-full text-white">
+            <Phone className="size-[12px]" />
           </span>
-          <span className="text-[9.5px] font-semibold uppercase tracking-wider text-status-full">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-status-full sm:text-[10.5px]">
             긴급
           </span>
         </div>
@@ -332,12 +345,12 @@ function Emergency119Button() {
             alt="119"
             width={202}
             height={88}
-            style={{ height: 18, width: "auto" }}
+            style={{ height: 22, width: "auto" }}
             className="block max-w-none"
             priority={false}
             unoptimized
           />
-          <p className="mt-0 w-full text-[10px] font-medium text-status-full/85">
+          <p className="mt-0.5 w-full text-[10.5px] font-medium text-status-full/85 sm:text-[11px]">
             지금 바로 연결
           </p>
         </div>
@@ -348,23 +361,23 @@ function Emergency119Button() {
 
 function ParamedicContext() {
   return (
-    <Link href="/dispatch/new" className="block">
-      <Card className="flex h-full items-center gap-2 p-2 transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)]">
-        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-fg shadow-[var(--shadow-sm)]">
-          <FilePlus2 className="size-[16px]" />
+    <Link href="/dispatch/new" className="block h-full min-h-0">
+      <Card className="flex h-full min-h-0 items-center gap-2.5 p-2.5 transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)] sm:p-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-fg shadow-[var(--shadow-sm)]">
+          <FilePlus2 className="size-[18px]" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+          <p className="text-[10.5px] font-semibold uppercase tracking-wider text-primary">
             구급대원
           </p>
-          <p className="mt-0 truncate text-[13px] font-bold text-text">
+          <p className="mt-0.5 truncate text-[14px] font-bold text-text">
             새 리포트 작성
           </p>
-          <p className="mt-0 truncate text-[10px] text-text-muted">
+          <p className="mt-0.5 truncate text-[11px] text-text-muted">
             구급활동일지 · 클라우드 보관
           </p>
         </div>
-        <ChevronRight className="size-4 text-text-subtle" />
+        <ChevronRight className="size-4 shrink-0 text-text-subtle" />
       </Card>
     </Link>
   );
@@ -381,22 +394,22 @@ function RecentContext({
     .map((id) => symptomMap.get(id)?.label ?? id)
     .filter(Boolean);
   return (
-    <Link href="/dispatch?tab=history" className="block">
-      <Card className="flex h-full flex-col gap-1 p-2 transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)]">
-        <div className="flex items-center gap-1">
-          <History className="size-3 text-primary" />
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+    <Link href="/dispatch?tab=history" className="block h-full min-h-0">
+      <Card className="flex h-full min-h-0 flex-col gap-1.5 p-2.5 transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)] sm:p-3">
+        <div className="flex items-center gap-1.5">
+          <History className="size-3.5 text-primary" />
+          <span className="text-[10.5px] font-semibold uppercase tracking-wider text-primary">
             최근 활동
           </span>
-          <span className="ml-auto text-[10px] text-text-subtle">
+          <span className="ml-auto text-[10.5px] text-text-subtle">
             {relativeTime(recent.ts)}
           </span>
         </div>
-        <p className="line-clamp-1 text-[12.5px] font-semibold text-text">
+        <p className="line-clamp-1 text-[13.5px] font-semibold text-text">
           {symLabels.length > 0 ? symLabels.join(" · ") : "응급실 검색"}
         </p>
         {top && (
-          <p className="line-clamp-1 text-[10.5px] text-text-muted">
+          <p className="line-clamp-1 text-[11.5px] text-text-muted">
             🏥 {top.name} · {top.etaMin}분 · {top.distanceKm.toFixed(1)}km
           </p>
         )}
@@ -407,19 +420,19 @@ function RecentContext({
 
 function EmptyContext() {
   return (
-    <Link href="/search" className="block">
-      <Card className="flex h-full flex-col justify-center gap-0.5 p-2 transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)]">
-        <div className="flex items-center gap-1">
-          <Sparkles className="size-3 text-primary" />
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+    <Link href="/search" className="block h-full min-h-0">
+      <Card className="flex h-full min-h-0 flex-col justify-center gap-1 p-2.5 transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)] sm:p-3">
+        <div className="flex items-center gap-1.5">
+          <Sparkles className="size-3.5 text-primary" />
+          <span className="text-[10.5px] font-semibold uppercase tracking-wider text-primary">
             시작하기
           </span>
         </div>
-        <p className="text-[12.5px] font-semibold text-text">
+        <p className="text-[13.5px] font-semibold text-text">
           첫 검색을 시작해 보세요
         </p>
-        <p className="text-[10px] leading-snug text-text-muted">
-          증상·연령 입력 시 가까운 응급실 안내
+        <p className="text-[11px] leading-snug text-text-muted">
+          증상·연령만 입력하면 가까운 응급실을 찾아드려요.
         </p>
       </Card>
     </Link>
@@ -444,23 +457,23 @@ function SafetyGuide({ isParamedic }: { isParamedic: boolean }) {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.16 }}
       >
-        <Card className="p-2">
-          <div className="mb-1 flex items-center gap-1">
-            <Activity className="size-3 text-accent" />
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">
+        <Card className="shrink-0 p-2.5 sm:p-3">
+          <div className="mb-1.5 flex items-center gap-1.5">
+            <Activity className="size-3.5 text-accent" />
+            <p className="text-[10.5px] font-semibold uppercase tracking-wider text-accent sm:text-[11px]">
               현장 평가 빠른 참조
             </p>
           </div>
-          <ul className="space-y-0.5">
+          <ul className="space-y-1">
             {refs.map((r) => (
               <li
                 key={r.code}
-                className="flex items-baseline gap-1.5 border-b border-border/60 pb-0.5 last:border-b-0 last:pb-0"
+                className="flex items-baseline gap-2 border-b border-border/60 pb-1 last:border-b-0 last:pb-0"
               >
-                <span className="w-[52px] shrink-0 font-mono text-[11px] font-bold text-text">
+                <span className="w-[56px] shrink-0 font-mono text-[11.5px] font-bold text-text sm:w-[58px] sm:text-[12px]">
                   {r.code}
                 </span>
-                <span className="min-w-0 flex-1 truncate text-[10.5px] text-text-muted">
+                <span className="min-w-0 flex-1 truncate text-[11px] text-text-muted sm:text-[11.5px]">
                   {r.desc}
                 </span>
               </li>
@@ -482,27 +495,27 @@ function SafetyGuide({ isParamedic }: { isParamedic: boolean }) {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4, delay: 0.16 }}
     >
-      <Card className="p-2">
-        <div className="mb-1 flex items-center gap-1">
-          <Siren className="size-3 text-status-full" />
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-status-full">
+      <Card className="shrink-0 p-2.5 sm:p-3">
+        <div className="mb-1.5 flex items-center gap-1.5">
+          <Siren className="size-3.5 text-status-full" />
+          <p className="text-[10.5px] font-semibold uppercase tracking-wider text-status-full sm:text-[11px]">
             즉시 119가 필요한 신호
           </p>
         </div>
-        <ul className="grid grid-cols-3 gap-1">
+        <ul className="grid grid-cols-3 gap-1.5">
           {signs.map(({ Icon, label }) => (
             <li
               key={label}
-              className="flex flex-col items-center gap-0.5 rounded-[var(--radius-sm)] bg-status-full-soft/60 px-1 py-1 text-center"
+              className="flex flex-col items-center gap-1 rounded-[var(--radius-sm)] bg-status-full-soft/60 px-1.5 py-1.5 text-center"
             >
-              <Icon className="size-3.5 text-status-full" strokeWidth={2.2} />
-              <span className="text-[9.5px] font-medium leading-tight text-status-full">
+              <Icon className="size-4 text-status-full" strokeWidth={2.2} />
+              <span className="text-[10.5px] font-medium leading-tight text-status-full sm:text-[11px]">
                 {label}
               </span>
             </li>
           ))}
         </ul>
-        <p className="mt-1 text-[10px] leading-snug text-text-muted">
+        <p className="mt-1.5 text-[11px] leading-snug text-text-muted">
           위 신호가 보이면 검색 전 먼저 <b className="text-status-full">119</b> 에
           전화하세요.
         </p>
@@ -537,7 +550,7 @@ function SafetyGuide({ isParamedic }: { isParamedic: boolean }) {
  * - "지도" 라인은 NaverMap SDK 가 지도 위에 © NAVER 워터마크를 자동 표시
  *   하므로 약관상 별도 텍스트 attribution 없이도 무방.
  */
-const LOGO_HEIGHT = 13;
+const LOGO_HEIGHT = 15;
 
 const SOURCES = [
   {
@@ -582,10 +595,27 @@ const SOURCES = [
 
 function Footer() {
   return (
-    <footer className="shrink-0 pt-0.5 text-center">
-      <div className="space-y-0.5 text-[9.5px] leading-tight text-text-subtle">
-        <p className="text-[9.5px] font-semibold text-text-muted">데이터 제공</p>
-        <ul className="flex flex-wrap items-center justify-center gap-x-1 gap-y-0.5">
+    <footer
+      className={cn(
+        /*
+         * 탭바(BottomNav) 바로 위에 고정.
+         * - `fixed` + `bottom = 탭바높이 + safe-area` 로 위치를 박아,
+         *   홈 본문의 flex 체인이 꼬여도 푸터는 항상 탭 위에 붙는다.
+         * - 좌우는 max-w-[520px] 로 중앙 정렬, 배경은 tabbar 와 톤 맞춤.
+         */
+        "fixed inset-x-0 z-30",
+        "bottom-[calc(var(--bottom-nav-pad)+env(safe-area-inset-bottom))]",
+      )}
+    >
+      <div
+        className={cn(
+          "mx-auto w-full max-w-[520px] px-4 pb-1.5 pt-2 text-center",
+          "border-t border-border/60 bg-bg/85 backdrop-blur supports-[backdrop-filter]:bg-bg/75",
+        )}
+      >
+        <div className="space-y-1 text-[10.5px] leading-tight text-text-subtle sm:text-[11px]">
+        <p className="font-semibold text-text-muted">데이터 제공</p>
+        <ul className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
           {SOURCES.map((s) => {
             const h = LOGO_HEIGHT * (("scale" in s && s.scale) || 1);
             return (
@@ -597,7 +627,7 @@ function Footer() {
                   aria-label={`${s.label} 새 창에서 열기`}
                   title={s.label}
                   className={cn(
-                    "inline-flex h-[22px] items-center justify-center rounded-[var(--radius-sm)] border px-1 transition-colors",
+                    "inline-flex h-[26px] items-center justify-center rounded-[var(--radius-sm)] border px-1.5 transition-colors",
                     s.dark
                       ? "border-slate-700 bg-slate-700 hover:bg-slate-800"
                       : "border-border bg-white hover:bg-surface",
@@ -617,10 +647,11 @@ function Footer() {
             );
           })}
         </ul>
-        <p className="text-text-subtle/80">
-          본 앱은 의료 행위를 대체하지 않습니다 ·{" "}
-          <span className="text-status-full/80">위급 시 즉시 119</span>
-        </p>
+          <p className="text-text-subtle/80">
+            본 앱은 의료 행위를 대체하지 않습니다 ·{" "}
+            <span className="text-status-full/80">위급 시 즉시 119</span>
+          </p>
+        </div>
       </div>
     </footer>
   );

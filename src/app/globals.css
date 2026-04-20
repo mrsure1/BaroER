@@ -2,6 +2,12 @@
 
 /* ---------- Design Tokens (light) ---------- */
 :root {
+  /* BottomNav 고정 영역(아이콘+라벨 행) — 레이아웃 pb 와 맞춰 이중 여백 방지 */
+  --bottom-nav-pad: 3.625rem;
+  /* 홈 하단에 `fixed` 로 붙는 "데이터 제공" 푸터의 대략적 높이 —
+     본문이 이 푸터 뒤에 가려지지 않도록 홈 루트에 pb 로 동일값을 준다. */
+  --home-footer-pad: 5.25rem;
+
   /* Neutral scale — warm-cool balanced */
   --color-bg: 255 255 255;
   --color-surface: 250 250 251;
