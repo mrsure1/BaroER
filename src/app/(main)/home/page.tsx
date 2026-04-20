@@ -274,27 +274,91 @@ function ContextCard({
         <EmptyContext />
       )}
 
-      <Link href="tel:119">
-        <Card className="flex h-full flex-col justify-between border-status-full/30 bg-status-full-soft p-3 transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)]">
-          <div className="flex items-center gap-1.5">
-            <span className="grid size-7 place-items-center rounded-full bg-status-full text-white">
-              <Phone className="size-[14px]" />
-            </span>
-            <span className="text-[10.5px] font-semibold uppercase tracking-wider text-status-full">
-              긴급
-            </span>
-          </div>
-          <div>
-            <p className="text-[22px] font-extrabold leading-none text-status-full">
-              119
-            </p>
-            <p className="mt-0.5 text-[11px] text-status-full/80">
-              지금 바로 연결
-            </p>
-          </div>
-        </Card>
-      </Link>
+      <Emergency119Button />
     </motion.section>
+  );
+}
+
+/**
+ * 119 긴급 호출 — "3D 푸시 버튼" 인터랙션.
+ *
+ * 디자인 의도
+ *  · 평상시: 카드 아래쪽에 5px 두께의 짙은 레드 "측면(edge)" 그림자가
+ *    깔려 있어 입체적인 "두께" 가 보인다. 추가로 외곽에 부드러운
+ *    드롭 그림자를 한 겹 더 깔아 부유감(depth) 까지 더했다.
+ *  · 호버: 살짝 떠올라(translate-y -1px) 카드가 "들썩"이며 클릭 가능
+ *    함을 시각화. 측면 그림자가 6px 로 한 단계 두꺼워진다.
+ *  · 클릭/탭(active): 카드가 측면 두께만큼(5px) 정확히 내려앉으며
+ *    측면 그림자는 0 으로 사라져, 물리적으로 "버튼이 눌린" 느낌을 준다.
+ *  · 텍스트 "119" 는 소방청 BI 로 교체 — 동일한 의미를 더 직관적으로
+ *    전달하며 화면 안에서 1차 연결대상이 시각적으로 강조된다.
+ *
+ * 접근성
+ *  · `aria-label` 로 의미 명시.
+ *  · transition duration 100ms — 햅틱한 반응성 확보(<150ms 권장 한계).
+ *  · `select-none` 으로 더블탭 시 텍스트 셀렉션 회피.
+ */
+function Emergency119Button() {
+  return (
+    <Link
+      href="tel:119"
+      aria-label="119 긴급 전화 걸기"
+      className={cn(
+        "group block select-none transition-transform duration-100 ease-out",
+        // press: 카드를 5px 내려앉혀 측면 그림자와 맞물리게 함
+        "active:translate-y-[5px]",
+      )}
+    >
+      <div
+        className={cn(
+          "relative flex h-full flex-col justify-between overflow-hidden rounded-[var(--radius-md)]",
+          "border border-status-full/30",
+          // 광택감을 위해 위→아래 살짝 그라데이션 (white → status-full-soft)
+          "bg-gradient-to-b from-white to-status-full-soft/90",
+          "p-3",
+          // 3D 측면(edge) 그림자: 평상시 5px → hover 6px → active 0
+          // 외곽 드롭 그림자: 평상시 부유, active 시 거의 평면
+          "shadow-[0_5px_0_0_#b91c1c,0_10px_22px_-6px_rgb(185_28_28/0.45)]",
+          "transition-shadow duration-100 ease-out",
+          "group-hover:shadow-[0_6px_0_0_#b91c1c,0_14px_28px_-6px_rgb(185_28_28/0.5)]",
+          "group-active:shadow-[0_0_0_0_#b91c1c,0_2px_6px_-2px_rgb(185_28_28/0.3)]",
+        )}
+      >
+        {/* 안쪽 상단의 미세한 하이라이트 — 유리/플라스틱 버튼의 광택 */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-white/80 to-transparent"
+        />
+
+        <div className="relative flex items-center gap-1.5">
+          <span className="grid size-7 place-items-center rounded-full bg-status-full text-white shadow-[0_2px_4px_rgb(185_28_28/0.45)]">
+            <Phone className="size-[14px]" />
+          </span>
+          <span className="text-[10.5px] font-semibold uppercase tracking-wider text-status-full">
+            긴급
+          </span>
+        </div>
+
+        <div className="relative">
+          {/* 119 BI — 텍스트 대신 공식 로고 사용 */}
+          <Image
+            src="/logos/119.png"
+            alt="119"
+            width={202}
+            height={88}
+            // 카드 폭 안에서 안정적으로 보이도록 height 기준으로 축소.
+            // h-7 (28px) ≈ 텍스트 22px 보다 살짝 큼 → 시각적 무게 유지.
+            style={{ height: 28, width: "auto" }}
+            className="block max-w-none drop-shadow-[0_1px_0_rgb(185_28_28/0.25)]"
+            priority={false}
+            unoptimized
+          />
+          <p className="mt-0.5 text-[11px] font-medium text-status-full/80">
+            지금 바로 연결
+          </p>
+        </div>
+      </div>
+    </Link>
   );
 }
 
@@ -475,8 +539,10 @@ function SafetyGuide({ isParamedic }: { isParamedic: boolean }) {
 /**
  * 한 화면(fold) 안에 들어가도록 압축한 데이터 출처 + 의료 면책 푸터.
  *
- * - 각 출처에는 실제 기관 BI/CI(E-Gen·보건복지부·KTAS·소방청 119)를
- *   그대로 사용한다. 4개 로고는 원본 종횡비가 모두 다르므로
+ * - 각 출처에는 실제 기관 BI/CI(E-Gen·보건복지부·KTAS)를 그대로
+ *   사용한다. 119 는 데이터 호출이 없는 단순 다이얼링 대상이라 출처
+ *   라벨에서는 제외했다 (정직한 attribution 원칙). 3개 로고는 원본
+ *   종횡비가 모두 다르므로
  *   "동일한 시각적 크기"는 **높이를 고정**하고 너비를 종횡비에 맞춰
  *   자동 조절하여 달성한다. (Image.style 의 height + width:auto + 원본
  *   intrinsic width/height 가 함께 작동해 layout shift 없이 비율 유지)
@@ -514,14 +580,6 @@ const SOURCES = [
     // KTAS 는 두꺼운 산세리프라 같은 픽셀 높이에서도 다른 로고보다
     // 시각적 무게가 커 보임. 0.78x 로 다운스케일해 광학적 정렬을 맞춘다.
     scale: 0.78,
-  },
-  {
-    href: "https://www.nfa.go.kr",
-    label: "소방청 119",
-    src: "/logos/119.png",
-    width: 202,
-    height: 88,
-    dark: false,
   },
 ] as const;
 
