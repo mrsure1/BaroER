@@ -282,21 +282,28 @@ function ContextCard({
 /**
  * 119 긴급 호출 — "3D 푸시 버튼" 인터랙션.
  *
- * 디자인 의도
- *  · 평상시: 카드 아래쪽에 5px 두께의 짙은 레드 "측면(edge)" 그림자가
- *    깔려 있어 입체적인 "두께" 가 보인다. 추가로 외곽에 부드러운
- *    드롭 그림자를 한 겹 더 깔아 부유감(depth) 까지 더했다.
- *  · 호버: 살짝 떠올라(translate-y -1px) 카드가 "들썩"이며 클릭 가능
- *    함을 시각화. 측면 그림자가 6px 로 한 단계 두꺼워진다.
- *  · 클릭/탭(active): 카드가 측면 두께만큼(5px) 정확히 내려앉으며
- *    측면 그림자는 0 으로 사라져, 물리적으로 "버튼이 눌린" 느낌을 준다.
- *  · 텍스트 "119" 는 소방청 BI 로 교체 — 동일한 의미를 더 직관적으로
- *    전달하며 화면 안에서 1차 연결대상이 시각적으로 강조된다.
+ * 디자인 의도 (가우시안 블러 없이 솔리드 레이어만으로 입체 표현)
+ *  ─────────────────────────────────────────────────────────────────
+ *  ① **상단 inset highlight** (rgba(255,255,255,.95))
+ *     → 카드 위쪽 1.5px 가 하얗게 빛나며 "탑 베벨" (chamfer top)
+ *  ② **하단 inset shadow** (rgba(120,20,20,.22))
+ *     → 카드 안쪽 바닥에 미세한 어둠 → 표면이 살짝 오목해 보임
+ *  ③ **측면 누적 솔리드 edge** (5층, 1px → 5px)
+ *     → 위에서 아래로 #c52828 → #b91c1c → #a31616 → #881010 → #6e0c0c
+ *       로 점점 짙어져 ambient occlusion 처럼 "두께가 곡선으로 깎인 면"
+ *       처럼 보임. 단일 그림자보다 훨씬 입체적.
+ *  ─────────────────────────────────────────────────────────────────
+ *  · 호버: 상단 highlight 가 더 밝아지며 카드가 "반응" 한다는 신호만
+ *    살짝 줌 (위치/크기 변화 없음 — 모바일 친화적, 의도치 않은 들썩임 X)
+ *  · 클릭/탭(active): 카드가 5px 내려앉음과 동시에 5층 측면 edge 가
+ *    한 번에 사라지고, inset 도 "눌린" 깊은 그림자로 바뀌며 자기
+ *    발자국 안으로 푹 가라앉음 → 물리적인 "버튼 눌림" 햅틱
+ *  · "119" 텍스트는 소방청 BI 이미지로 교체.
  *
  * 접근성
- *  · `aria-label` 로 의미 명시.
- *  · transition duration 100ms — 햅틱한 반응성 확보(<150ms 권장 한계).
- *  · `select-none` 으로 더블탭 시 텍스트 셀렉션 회피.
+ *  · `aria-label` 로 의미 명시
+ *  · transition duration 100ms — 햅틱한 반응성 확보(<150ms 권장 한계)
+ *  · `select-none` 으로 더블탭 시 텍스트 셀렉션 회피
  */
 function Emergency119Button() {
   return (
@@ -305,33 +312,35 @@ function Emergency119Button() {
       aria-label="119 긴급 전화 걸기"
       className={cn(
         "group block select-none transition-transform duration-100 ease-out",
-        // press: 카드를 5px 내려앉혀 측면 그림자와 맞물리게 함
         "active:translate-y-[5px]",
       )}
     >
       <div
         className={cn(
           "relative flex h-full flex-col justify-between overflow-hidden rounded-[var(--radius-md)]",
-          "border border-status-full/30",
-          // 광택감을 위해 위→아래 살짝 그라데이션 (white → status-full-soft)
-          "bg-gradient-to-b from-white to-status-full-soft/90",
+          "border border-status-full/35",
+          // 위→아래 광택 그라데이션 — "위에서 빛이 떨어지는" 라이팅
+          "bg-gradient-to-b from-white via-status-full-soft/60 to-status-full-soft",
           "p-3",
-          // 3D 측면(edge) 그림자: 평상시 5px → hover 6px → active 0
-          // 외곽 드롭 그림자: 평상시 부유, active 시 거의 평면
-          "shadow-[0_5px_0_0_#b91c1c,0_10px_22px_-6px_rgb(185_28_28/0.45)]",
+          // 평상시: inset 상단 highlight + 하단 dark + 5층 솔리드 edge
+          // (각 레이어를 1px 씩 누적하며 점점 짙어지게 해 면이 곡선처럼 깎인 듯)
+          "shadow-[inset_0_1.5px_0_rgba(255,255,255,0.95),inset_0_-1px_0_rgba(120,20,20,0.22),0_1px_0_0_#c52828,0_2px_0_0_#b91c1c,0_3px_0_0_#a31616,0_4px_0_0_#881010,0_5px_0_0_#6e0c0c]",
           "transition-shadow duration-100 ease-out",
-          "group-hover:shadow-[0_6px_0_0_#b91c1c,0_14px_28px_-6px_rgb(185_28_28/0.5)]",
-          "group-active:shadow-[0_0_0_0_#b91c1c,0_2px_6px_-2px_rgb(185_28_28/0.3)]",
+          // 호버: 위치/크기는 그대로, 상단 highlight 만 한 단계 더 밝게
+          "group-hover:shadow-[inset_0_1.5px_0_rgba(255,255,255,1),inset_0_-1px_0_rgba(120,20,20,0.22),0_1px_0_0_#c52828,0_2px_0_0_#b91c1c,0_3px_0_0_#a31616,0_4px_0_0_#881010,0_5px_0_0_#6e0c0c]",
+          // 클릭: 5층 edge 모두 사라지고 inset 이 "눌린 안쪽 그림자" 로 전환
+          // → 카드는 active:translate-y-[5px] 로 정확히 자기 발자국에 안착
+          "group-active:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),inset_0_2px_3px_rgba(120,20,20,0.35)]",
         )}
       >
         {/* 안쪽 상단의 미세한 하이라이트 — 유리/플라스틱 버튼의 광택 */}
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-white/80 to-transparent"
+          className="pointer-events-none absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-white/85 to-transparent"
         />
 
         <div className="relative flex items-center gap-1.5">
-          <span className="grid size-7 place-items-center rounded-full bg-status-full text-white shadow-[0_2px_4px_rgb(185_28_28/0.45)]">
+          <span className="grid size-7 place-items-center rounded-full bg-status-full text-white">
             <Phone className="size-[14px]" />
           </span>
           <span className="text-[10.5px] font-semibold uppercase tracking-wider text-status-full">
@@ -349,7 +358,7 @@ function Emergency119Button() {
             // 카드 폭 안에서 안정적으로 보이도록 height 기준으로 축소.
             // h-7 (28px) ≈ 텍스트 22px 보다 살짝 큼 → 시각적 무게 유지.
             style={{ height: 28, width: "auto" }}
-            className="block max-w-none drop-shadow-[0_1px_0_rgb(185_28_28/0.25)]"
+            className="block max-w-none"
             priority={false}
             unoptimized
           />
