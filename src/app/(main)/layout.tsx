@@ -4,7 +4,7 @@ import { BottomNav } from "@/components/common/BottomNav";
 export default function MainLayout({ children }: { children: ReactNode }) {
   return (
     <div className="relative flex min-h-[100dvh] flex-col bg-bg">
-      <div className="flex-1 pb-[calc(72px+env(safe-area-inset-bottom))]">
+      <div className="flex min-h-0 flex-1 flex-col pb-[calc(72px+env(safe-area-inset-bottom))]">
         {children}
       </div>
       <BottomNav />
