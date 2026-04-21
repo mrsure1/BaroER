@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { BottomNav } from "@/components/common/BottomNav";
+import { OnboardingGate } from "@/components/onboarding/OnboardingGate";
 
 /**
  * 모바일 앱 뷰포트를 "정확히 100dvh" 로 고정한다.
@@ -28,6 +29,13 @@ export default function MainLayout({ children }: { children: ReactNode }) {
         {children}
       </div>
       <BottomNav />
+      {/*
+       * 첫 로그인 직후 1회 노출되는 사용 안내 카드 오버레이.
+       * `/home` 에 마운트된 이 레이아웃 위에 fixed 로 깔려, 사용자가
+       * "건너뛰기" 또는 "시작하기" 를 누르면 localStorage 에 seen=true
+       * 가 저장되어 이후 재노출되지 않는다. (설정에서 다시 보기 가능)
+       */}
+      <OnboardingGate />
     </div>
   );
 }

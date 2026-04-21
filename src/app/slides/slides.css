@@ -1,0 +1,28 @@
+/* ───────────────────────────────────────────────────────────────
+ * /slides 전용 스타일 — 인쇄(PDF 저장) · 큰 화면 조판 보정
+ * ─────────────────────────────────────────────────────────────── */
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 0;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  /* 인쇄 시 한 장씩 쪼개지도록 각 슬라이드를 섹션으로 인식하고 page-break */
+  section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  section:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+}

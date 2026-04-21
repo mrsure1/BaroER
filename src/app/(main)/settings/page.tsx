@@ -1,14 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Bell,
+  Bandage,
   ChevronRight,
   Globe,
   HelpCircle,
+  LayoutGrid,
   LogOut,
   Navigation,
   Palette,
+  PlayCircle,
+  Presentation,
   Shield,
   UserCircle,
   type LucideIcon,
@@ -17,41 +22,64 @@ import { Card } from "@/components/ui/Card";
 import { ScreenHeader } from "@/components/common/ScreenHeader";
 import { ThemeToggle } from "@/components/settings/ThemeToggle";
 import { useAuthStore } from "@/stores/authStore";
+import { useOnboardingStore } from "@/stores/onboardingStore";
 
 interface Row {
   label: string;
   href?: string;
+  onClick?: () => void;
   Icon: LucideIcon;
   tone?: "default" | "danger";
 }
 
-const groups: Array<{ title: string; rows: Row[] }> = [
-  {
-    title: "계정",
-    rows: [
-      { label: "프로필 설정", href: "/settings/profile", Icon: UserCircle },
-      { label: "알림", href: "/settings/notifications", Icon: Bell },
-      { label: "언어", href: "/settings/language", Icon: Globe },
-      { label: "기본 내비", href: "/settings/navigator", Icon: Navigation },
-    ],
-  },
-  {
-    title: "지원",
-    rows: [
-      { label: "개인정보 처리방침", href: "/legal/privacy", Icon: Shield },
-      { label: "도움말", href: "/help", Icon: HelpCircle },
-    ],
-  },
-  {
-    title: "",
-    // 로그아웃은 별도 라우트(/logout)로 GET 호출 — Link 로 처리하면
-    // 미들웨어가 쿠키를 정확히 만료시킨 뒤 /login 으로 리다이렉트한다.
-    rows: [{ label: "로그아웃", href: "/logout", Icon: LogOut, tone: "danger" }],
-  },
-];
-
 export default function SettingsPage() {
   const user = useAuthStore((s) => s.user);
+  const router = useRouter();
+  const resetOnboarding = useOnboardingStore((s) => s.reset);
+
+  const groups: Array<{ title: string; rows: Row[] }> = [
+    {
+      title: "계정",
+      rows: [
+        { label: "프로필 설정", href: "/settings/profile", Icon: UserCircle },
+        { label: "알림", href: "/settings/notifications", Icon: Bell },
+        { label: "언어", href: "/settings/language", Icon: Globe },
+        { label: "기본 내비", href: "/settings/navigator", Icon: Navigation },
+      ],
+    },
+    {
+      title: "지원",
+      rows: [
+        {
+          label: "앱 사용 안내 다시 보기",
+          Icon: PlayCircle,
+          onClick: () => {
+            resetOnboarding();
+            router.push("/home");
+          },
+        },
+        { label: "앱 소개 슬라이드", href: "/slides", Icon: Presentation },
+        {
+          label: "홈 Hero 시안 (5종)",
+          href: "/home/hero-variants",
+          Icon: LayoutGrid,
+        },
+        {
+          label: "응급조치 카드 시안 (5종)",
+          href: "/home/first-aid-variants",
+          Icon: Bandage,
+        },
+        { label: "개인정보 처리방침", href: "/legal/privacy", Icon: Shield },
+        { label: "도움말", href: "/help", Icon: HelpCircle },
+      ],
+    },
+    {
+      title: "",
+      // 로그아웃은 별도 라우트(/logout)로 GET 호출 — Link 로 처리하면
+      // 미들웨어가 쿠키를 정확히 만료시킨 뒤 /login 으로 리다이렉트한다.
+      rows: [{ label: "로그아웃", href: "/logout", Icon: LogOut, tone: "danger" }],
+    },
+  ];
 
   return (
     <>
@@ -133,7 +161,7 @@ export default function SettingsPage() {
                   </h3>
                 )}
                 <Card className="divide-y divide-border p-0">
-                  {g.rows.map(({ label, href, Icon, tone }) => {
+                  {g.rows.map(({ label, href, onClick, Icon, tone }) => {
                     const content = (
                       <div className="flex items-center gap-3 px-4 py-3.5">
                         <Icon
@@ -152,24 +180,28 @@ export default function SettingsPage() {
                         >
                           {label}
                         </span>
-                        {href && <ChevronRight className="size-[18px] text-text-subtle" />}
+                        <ChevronRight className="size-[18px] text-text-subtle" />
                       </div>
                     );
-                    return href ? (
-                      // /logout 같은 라우트 핸들러는 prefetch 가 의도치 않은
-                      // 사이드이펙트(즉시 로그아웃)를 일으킬 수 있어 prefetch={false}.
-                      <Link
-                        key={label}
-                        href={href}
-                        prefetch={false}
-                        className="block transition-colors hover:bg-surface-2"
-                      >
-                        {content}
-                      </Link>
-                    ) : (
+                    if (href) {
+                      return (
+                        // /logout 같은 라우트 핸들러는 prefetch 가 의도치 않은
+                        // 사이드이펙트(즉시 로그아웃)를 일으킬 수 있어 prefetch={false}.
+                        <Link
+                          key={label}
+                          href={href}
+                          prefetch={false}
+                          className="block transition-colors hover:bg-surface-2"
+                        >
+                          {content}
+                        </Link>
+                      );
+                    }
+                    return (
                       <button
                         key={label}
                         type="button"
+                        onClick={onClick}
                         className="block w-full text-left transition-colors hover:bg-surface-2"
                       >
                         {content}
