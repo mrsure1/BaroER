@@ -201,9 +201,11 @@ export function MockupHome() {
         ))}
       </div>
 
-      {/* 컨텍스트 + 119 — 일반: 시안 D(좌측 굵은 바) */}
+      {/* 컨텍스트 + 119 — 일반: 시안 D(119와 동일 3D 박스·회색 측면 그림자) */}
       <div className="mx-3 mt-1.5 grid grid-cols-[1.4fr_1fr] gap-1.5">
-        <div className="rounded-[10px] border-y-2 border-r-2 border-l-[5px] border-primary bg-gradient-to-r from-primary-soft/60 to-surface p-1.5 pl-1">
+        <div
+          className="rounded-[10px] border border-primary/35 bg-white p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),inset_0_-1px_0_rgba(0,0,0,0.06),0_1px_0_0_#d1d5db,0_2px_0_0_#c4c4cc,0_3px_0_0_#b0b4bc]"
+        >
           <p className="text-[7px] font-semibold uppercase tracking-wider text-primary">
             증상별 응급조치요령
           </p>

@@ -145,33 +145,52 @@ export function FirstAidContextVariantC() {
   );
 }
 
-/** 시안 D — 좌측 굵은 액센트 바 */
+/** 시안 D — 긴급 119 카드와 동일한 3D 푸시 박스(.btn-119) + primary 테두리 */
 export function FirstAidContextVariantD() {
   return (
-    <Shell
-      cardClassName={cn(
-        "border-y-[3px] border-r-[3px] border-l-[8px] border-primary bg-gradient-to-r from-primary-soft/50 to-surface",
-        "dark:from-primary-soft/20",
-      )}
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35 }}
+      className="h-full min-h-0"
     >
-      <div className="flex items-start gap-2 pl-0.5">
-        <Cross className="size-7 shrink-0 text-primary" strokeWidth={2.5} />
-        <div className="min-w-0 flex-1">
-          <p className="text-[10.5px] font-semibold uppercase tracking-wider text-primary">
-            증상별 응급조치요령
-          </p>
-          <p className="mt-0.5 text-[13.5px] font-bold leading-snug text-text">
-            병원 가기 전
-            <br />
-            지금 할 수 있는 것
-          </p>
-          <p className="mt-0.5 text-[11px] text-text-muted">
-            음성·메모로 상황을 남길 수 있어요.
-          </p>
+      <Link
+        href={href}
+        aria-label={aria}
+        className={cn(
+          "group block h-full min-h-0 select-none transition-transform duration-100 ease-out",
+          "active:translate-y-[5px]",
+        )}
+      >
+        <div
+          className={cn(
+            "btn-119",
+            "relative flex h-full min-h-0 flex-col justify-between gap-1.5 overflow-hidden rounded-[var(--radius-md)]",
+            "border border-primary/35",
+            "bg-white",
+            "p-2.5 sm:p-3",
+          )}
+        >
+          <div className="flex items-start gap-2">
+            <Cross className="size-7 shrink-0 text-primary" strokeWidth={2.5} />
+            <div className="min-w-0 flex-1">
+              <p className="text-[10.5px] font-semibold uppercase tracking-wider text-primary">
+                증상별 응급조치요령
+              </p>
+              <p className="mt-0.5 text-[13.5px] font-bold leading-snug text-text">
+                병원 가기 전
+                <br />
+                지금 할 수 있는 것
+              </p>
+              <p className="mt-0.5 text-[11px] text-text-muted">
+                음성·메모로 상황을 남길 수 있어요.
+              </p>
+            </div>
+            <ChevronRight className="mt-0.5 size-4 shrink-0 text-primary" />
+          </div>
         </div>
-        <ChevronRight className="mt-0.5 size-4 shrink-0 text-primary" />
-      </div>
-    </Shell>
+      </Link>
+    </motion.div>
   );
 }
 
