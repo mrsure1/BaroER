@@ -2,18 +2,25 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   BookMarked,
   ChevronDown,
-  ChevronRight,
   Compass,
   Home,
   LifeBuoy,
+  Mail,
   MessageCircleQuestion,
+  PlayCircle,
+  Shield,
+  Zap,
+  type LucideIcon,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { ScreenHeader } from "@/components/common/ScreenHeader";
 import { useLocale, type Locale } from "@/stores/localeStore";
+import { useOnboardingStore } from "@/stores/onboardingStore";
+import { useAuthStore } from "@/stores/authStore";
 import { cn } from "@/lib/cn";
 
 /**
@@ -182,15 +189,105 @@ const INTRO: Record<Locale, { title: string; desc: string; quickTitle: string; q
   },
 };
 
+/* ---------------------------------------------------------------------- */
+/* Quick Actions — 상단에 배치되는 "바로 해결" 카드들                         */
+/* ---------------------------------------------------------------------- */
+
+interface QuickActionLabels {
+  heading: string;
+  replayOnboarding: { title: string; desc: string };
+  privacy: { title: string; desc: string };
+  contact: { title: string; desc: string };
+  home: { title: string; desc: string };
+}
+
+const QUICK_ACTION_LABELS: Record<Locale, QuickActionLabels> = {
+  ko: {
+    heading: "바로 해결하기",
+    replayOnboarding: {
+      title: "앱 사용 안내 다시 보기",
+      desc: "첫 로그인 때 본 8장짜리 카드 투어를 다시 봅니다.",
+    },
+    privacy: {
+      title: "개인정보 처리방침",
+      desc: "어떤 정보를 어떻게 다루는지 확인해요.",
+    },
+    contact: {
+      title: "문의하기",
+      desc: "support@baroer.app 로 메일 작성",
+    },
+    home: {
+      title: "홈으로 이동",
+      desc: "메인 화면으로 돌아가기",
+    },
+  },
+  en: {
+    heading: "Quick actions",
+    replayOnboarding: {
+      title: "Replay the app tour",
+      desc: "See the 8-card onboarding you saw on first login.",
+    },
+    privacy: {
+      title: "Privacy policy",
+      desc: "What data we collect and how we handle it.",
+    },
+    contact: {
+      title: "Contact us",
+      desc: "Compose an email to support@baroer.app",
+    },
+    home: {
+      title: "Back to home",
+      desc: "Return to the main screen",
+    },
+  },
+  ja: {
+    heading: "すぐに解決",
+    replayOnboarding: {
+      title: "アプリ使い方ツアーを再生",
+      desc: "初回ログイン時の 8 枚カードツアーを再度表示します。",
+    },
+    privacy: {
+      title: "プライバシーポリシー",
+      desc: "どの情報をどう扱うか確認できます。",
+    },
+    contact: {
+      title: "お問い合わせ",
+      desc: "support@baroer.app 宛にメール作成",
+    },
+    home: {
+      title: "ホームへ戻る",
+      desc: "メイン画面に戻る",
+    },
+  },
+  zh: {
+    heading: "快速解决",
+    replayOnboarding: {
+      title: "重新查看使用教程",
+      desc: "重新显示首次登录时的 8 张引导卡片。",
+    },
+    privacy: {
+      title: "隐私政策",
+      desc: "了解我们收集与处理的信息。",
+    },
+    contact: {
+      title: "联系我们",
+      desc: "发送邮件至 support@baroer.app",
+    },
+    home: {
+      title: "返回主页",
+      desc: "回到主屏幕",
+    },
+  },
+};
+
 type GuideBlock = { title: string; lines: string[] };
 
 const USER_GUIDE: Record<
   Locale,
-  { heading: string; blocks: GuideBlock[]; homeCta: string }
+  { heading: string; blocks: GuideBlock[] }
 > = {
   ko: {
     heading: "앱 사용 가이드",
-    homeCta: "메인 화면으로 이동",
     blocks: [
       {
         title: "이 앱으로 할 수 있는 일",
@@ -236,7 +333,6 @@ const USER_GUIDE: Record<
   },
   en: {
     heading: "User guide",
-    homeCta: "Go to home",
     blocks: [
       {
         title: "What you can do",
@@ -282,7 +378,6 @@ const USER_GUIDE: Record<
   },
   ja: {
     heading: "アプリの使い方",
-    homeCta: "ホームへ",
     blocks: [
       {
         title: "できること",
@@ -328,7 +423,6 @@ const USER_GUIDE: Record<
   },
   zh: {
     heading: "使用说明",
-    homeCta: "返回主页",
     blocks: [
       {
         title: "应用能做什么",
@@ -377,9 +471,84 @@ const USER_GUIDE: Record<
 export default function HelpPage() {
   const [locale] = useLocale();
   const [open, setOpen] = useState<number | null>(0);
+  const router = useRouter();
+  const resetOnboarding = useOnboardingStore((s) => s.reset);
+  const user = useAuthStore((s) => s.user);
   const faqs = FAQS[locale];
   const intro = INTRO[locale];
   const userGuide = USER_GUIDE[locale];
+  const qa = QUICK_ACTION_LABELS[locale];
+
+  // 온보딩 오버레이는 (main) 레이아웃 위 /home 에서만 마운트되므로,
+  // 리셋 + /home 푸시로 재노출을 트리거한다. 비로그인 사용자는 /login 으로
+  // 먼저 안내해 경로 일관성을 유지.
+  const handleReplayOnboarding = () => {
+    resetOnboarding();
+    router.push(user ? "/home" : "/login?next=%2Fhome");
+  };
+
+  interface Action {
+    title: string;
+    desc: string;
+    Icon: LucideIcon;
+    tone: "primary" | "accent" | "amber" | "neutral";
+    onClick?: () => void;
+    href?: string;
+  }
+
+  const actions: Action[] = [
+    {
+      title: qa.replayOnboarding.title,
+      desc: qa.replayOnboarding.desc,
+      Icon: PlayCircle,
+      tone: "primary",
+      onClick: handleReplayOnboarding,
+    },
+    {
+      title: qa.privacy.title,
+      desc: qa.privacy.desc,
+      Icon: Shield,
+      tone: "accent",
+      href: "/legal/privacy",
+    },
+    {
+      title: qa.contact.title,
+      desc: qa.contact.desc,
+      Icon: Mail,
+      tone: "amber",
+      href: "mailto:support@baroer.app?subject=%5BBaroER%5D%20%EB%AC%B8%EC%9D%98",
+    },
+    {
+      title: qa.home.title,
+      desc: qa.home.desc,
+      Icon: Home,
+      tone: "neutral",
+      href: "/home",
+    },
+  ];
+
+  const toneClasses: Record<Action["tone"], { bg: string; fg: string; ring: string }> = {
+    primary: {
+      bg: "bg-primary-soft",
+      fg: "text-primary",
+      ring: "group-hover:ring-primary/30",
+    },
+    accent: {
+      bg: "bg-accent-soft",
+      fg: "text-accent",
+      ring: "group-hover:ring-accent/30",
+    },
+    amber: {
+      bg: "bg-amber-100 dark:bg-amber-500/15",
+      fg: "text-amber-700 dark:text-amber-300",
+      ring: "group-hover:ring-amber-400/40",
+    },
+    neutral: {
+      bg: "bg-surface-2",
+      fg: "text-text-muted",
+      ring: "group-hover:ring-border-strong",
+    },
+  };
 
   return (
     <>
@@ -396,6 +565,73 @@ export default function HelpPage() {
             </p>
           </div>
         </Card>
+
+        {/* ============================================================
+            Quick Actions — 가장 흔한 4가지 행동을 상단에 모아둔다
+           ============================================================ */}
+        <section className="mt-5">
+          <h3 className="mb-2 flex items-center gap-2 px-1 text-[12px] font-semibold uppercase tracking-wider text-text-subtle">
+            <Zap className="size-3.5" />
+            {qa.heading}
+          </h3>
+          <div className="grid grid-cols-2 gap-2.5">
+            {actions.map((a) => {
+              const t = toneClasses[a.tone];
+              const content = (
+                <div
+                  className={cn(
+                    "group flex h-full min-h-[104px] flex-col justify-between rounded-[var(--radius-md)] border border-border bg-surface p-3.5 shadow-[var(--shadow-sm)] transition-all",
+                    "hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)] hover:ring-2",
+                    t.ring,
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "grid size-9 place-items-center rounded-xl",
+                      t.bg,
+                      t.fg,
+                    )}
+                  >
+                    <a.Icon className="size-[18px]" strokeWidth={2.1} />
+                  </div>
+                  <div className="mt-2">
+                    <p className="text-[13px] font-semibold leading-tight text-text">
+                      {a.title}
+                    </p>
+                    <p className="mt-1 line-clamp-2 text-[11.5px] leading-snug text-text-muted">
+                      {a.desc}
+                    </p>
+                  </div>
+                </div>
+              );
+              if (a.href) {
+                const isExternal = a.href.startsWith("mailto:") || a.href.startsWith("http");
+                if (isExternal) {
+                  return (
+                    <a key={a.title} href={a.href} className="block">
+                      {content}
+                    </a>
+                  );
+                }
+                return (
+                  <Link key={a.title} href={a.href} className="block">
+                    {content}
+                  </Link>
+                );
+              }
+              return (
+                <button
+                  key={a.title}
+                  type="button"
+                  onClick={a.onClick}
+                  className="block text-left"
+                >
+                  {content}
+                </button>
+              );
+            })}
+          </div>
+        </section>
 
         <Card className="mt-4 p-4">
           <div className="mb-2 flex items-center gap-2">
@@ -437,17 +673,6 @@ export default function HelpPage() {
             </div>
           </Card>
         </section>
-
-        <Link
-          href="/home"
-          className="mt-4 flex items-center justify-between gap-3 rounded-[var(--radius-md)] border border-border bg-surface px-4 py-3.5 text-[14px] font-medium text-text shadow-[var(--shadow-sm)] transition-colors hover:bg-surface-2"
-        >
-          <span className="flex min-w-0 items-center gap-2">
-            <Home className="size-[18px] shrink-0 text-primary" />
-            <span className="truncate">{userGuide.homeCta}</span>
-          </span>
-          <ChevronRight className="size-[18px] shrink-0 text-text-subtle" aria-hidden />
-        </Link>
 
         <section className="mt-6">
           <h3 className="mb-2 flex items-center gap-2 px-1 text-[12px] font-semibold uppercase tracking-wider text-text-subtle">

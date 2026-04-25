@@ -1,0 +1,11 @@
+---
+description: Prefer Gemini for video generation tasks
+alwaysApply: true
+---
+
+# Video Generation Preference
+
+- 사용자가 영상 제작, 영상 생성, promo video, teaser, demo video 등을 요청하면 로컬 Python 합성 파이프라인을 기본 선택으로 삼지 말고 Gemini API 기반 영상 생성 가능성을 먼저 검토한다.
+- Gemini API가 연결되어 있으면 Veo 계열 모델을 우선 사용한다.
+- Python, ffmpeg, moviepy, Pillow 기반 합성은 사용자가 명시적으로 원하거나 Gemini 경로가 불가능할 때만 대안으로 제안한다.
+- API 키는 코드에 하드코딩하지 말고 환경변수 `GEMINI_API_KEY` 에서 읽는다.

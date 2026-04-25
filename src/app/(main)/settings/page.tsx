@@ -4,16 +4,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Bell,
-  Bandage,
   ChevronRight,
   Globe,
   HelpCircle,
-  LayoutGrid,
   LogOut,
   Navigation,
   Palette,
   PlayCircle,
-  Presentation,
   Shield,
   UserCircle,
   type LucideIcon,
@@ -57,17 +54,6 @@ export default function SettingsPage() {
             resetOnboarding();
             router.push("/home");
           },
-        },
-        { label: "앱 소개 슬라이드", href: "/slides", Icon: Presentation },
-        {
-          label: "홈 Hero 시안 (5종)",
-          href: "/home/hero-variants",
-          Icon: LayoutGrid,
-        },
-        {
-          label: "응급조치 카드 시안 (5종)",
-          href: "/home/first-aid-variants",
-          Icon: Bandage,
         },
         { label: "개인정보 처리방침", href: "/legal/privacy", Icon: Shield },
         { label: "도움말", href: "/help", Icon: HelpCircle },
