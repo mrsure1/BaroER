@@ -28,7 +28,7 @@ import { Card } from "@/components/ui/Card";
 import { IconButton } from "@/components/ui/IconButton";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { ScreenHeader } from "@/components/common/ScreenHeader";
-import { useHistoryStore } from "@/stores/historyStore";
+import { useHistoryStore, type HistoryEntry } from "@/stores/historyStore";
 import { useAuthStore } from "@/stores/authStore";
 import { useFavoritesStore, type FavoriteHospital } from "@/stores/favoritesStore";
 import {
@@ -40,8 +40,42 @@ import { AGE_BANDS, SYMPTOMS } from "@/stores/searchStore";
 import { CAPACITY_META } from "@/lib/mockHospitals";
 import { ktasKoLabel } from "@/lib/ktasGuide";
 import { cn } from "@/lib/cn";
+import { reverseGeocode } from "@/services/geocode";
 
 type Tab = "history" | "favorites" | "dispatch";
+
+function HistoryOriginLine({ entry }: { entry: HistoryEntry }) {
+  const coords = entry.coords;
+  const [lazyAddress, setLazyAddress] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!coords || coords.fallback || entry.address) return;
+    let cancelled = false;
+    reverseGeocode(coords.lat, coords.lng).then((a) => {
+      if (!cancelled) setLazyAddress(a);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [coords, entry.address]);
+
+  if (!coords) return null;
+
+  const text =
+    coords.fallback
+      ? "기본 위치 (서울시청)"
+      : entry.address ?? lazyAddress ?? `위도 ${coords.lat.toFixed(4)}, 경도 ${coords.lng.toFixed(4)}`;
+
+  return (
+    <div className="mt-2 flex items-start gap-1.5 text-[11.5px] text-text-subtle">
+      <MapPin className="mt-[1px] size-3 shrink-0" />
+      <span className="min-w-0">
+        <span className="font-semibold text-text-muted">출발지</span> · {text}
+      </span>
+    </div>
+  );
+}
+
 
 const tabOptions = [
   { value: "history" as const, label: "내 기록", icon: <History className="size-4" /> },
@@ -265,23 +299,8 @@ function DispatchContent() {
                             </div>
                           )}
 
-                          {/* 출발지 */}
-                          {e.coords && (
-                            <div className="mt-2 flex items-start gap-1.5 text-[11.5px] text-text-subtle">
-                              <MapPin className="mt-[1px] size-3 shrink-0" />
-                              <span className="min-w-0">
-                                <span className="font-semibold text-text-muted">
-                                  출발지
-                                </span>{" "}
-                                ·{" "}
-                                {e.coords.fallback
-                                  ? "기본 위치 (서울시청)"
-                                  : e.address
-                                    ? e.address
-                                    : `위도 ${e.coords.lat.toFixed(4)}, 경도 ${e.coords.lng.toFixed(4)}`}
-                              </span>
-                            </div>
-                          )}
+                          {/* 출발지 — 저장된 주소 또는 역지오코딩 */}
+                          <HistoryOriginLine entry={e} />
 
                           {/* 행동 결과 */}
                           {e.actionTaken && (

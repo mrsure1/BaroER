@@ -31,6 +31,7 @@ import { ScreenHeader } from "@/components/common/ScreenHeader";
 import { NaverMap } from "@/components/maps/NaverMap";
 import { loadNaverMaps } from "@/lib/naverMaps";
 import { CAPACITY_META } from "@/lib/mockHospitals";
+import { reverseGeocode } from "@/services/geocode";
 import { fetchNearbyHospitals, fetchHospitalTotals } from "@/services/hospitals";
 import { getNavApp, launchNavigation, type NavAppId } from "@/lib/navApps";
 import { useNavPrefStore } from "@/stores/navPrefStore";
@@ -95,7 +96,7 @@ export default function SearchResultsPage() {
     capacity: Hospital["capacity"];
   } | null>(null);
 
-  const recordHospital = (
+  const recordHospital = async (
     hospital: SelectedHospitalSnapshot,
     actionType?: "navigate" | "call",
   ) => {
@@ -113,13 +114,18 @@ export default function SearchResultsPage() {
       return;
     }
 
+    let address: string | null = null;
+    if (coords) {
+      address = await reverseGeocode(coords.lat, coords.lng);
+    }
+
     addHistory({
       symptoms,
       gender,
       ageBand,
       notes,
       coords,
-      address: null,
+      address,
       selectedHospital: {
         id: hospital.id,
         name: hospital.name,
@@ -146,7 +152,7 @@ export default function SearchResultsPage() {
     const origin = { lat: coords.lat, lng: coords.lng, name: "현재 위치" };
     const saved = getNavApp(navId);
     if (saved) {
-      recordHospital(hospital, "navigate");
+      void recordHospital(hospital, "navigate");
       launchNavigation(saved, origin, dest);
       return;
     }
@@ -161,7 +167,7 @@ export default function SearchResultsPage() {
     const app = getNavApp(id);
     if (!app) return;
     const origin = { lat: coords.lat, lng: coords.lng, name: "현재 위치" };
-    recordHospital(pendingDest, "navigate");
+    void recordHospital(pendingDest, "navigate");
     // 사용자 탭 → 내비 앱 진입을 같은 user gesture 내에서 처리해야
     // iOS Safari 등에서 deep link 차단을 피한다.
     launchNavigation(app, origin, pendingDest);
@@ -352,7 +358,7 @@ export default function SearchResultsPage() {
                       active={selectedId === h.id}
                       onTap={() => {
                         setSelectedId(h.id);
-                        recordHospital(h);
+                        void recordHospital(h);
                       }}
                       onDirections={() => handleNavigate(h)}
                       isFavorited={favorites.some((f) => f.id === h.id)}
@@ -363,7 +369,7 @@ export default function SearchResultsPage() {
                           addFavorite({ id: h.id, name: h.name, address: h.address ?? "", tel: h.tel, lat: h.lat, lng: h.lng });
                         }
                       }}
-                      onCall={() => recordHospital(h, "call")}
+                      onCall={() => void recordHospital(h, "call")}
                     />
                   ))
                 )}
@@ -438,7 +444,7 @@ export default function SearchResultsPage() {
                         active={selectedId === h.id}
                         onTap={() => {
                           setSelectedId(h.id);
-                          recordHospital(h);
+                          void recordHospital(h);
                         }}
                       />
                     ))}
