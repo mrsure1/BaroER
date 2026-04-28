@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Activity,
@@ -32,7 +32,6 @@ import { NaverMap } from "@/components/maps/NaverMap";
 import { loadNaverMaps } from "@/lib/naverMaps";
 import { CAPACITY_META } from "@/lib/mockHospitals";
 import { fetchNearbyHospitals, fetchHospitalTotals } from "@/services/hospitals";
-import { reverseGeocode } from "@/services/geocode";
 import { getNavApp, launchNavigation, type NavAppId } from "@/lib/navApps";
 import { useNavPrefStore } from "@/stores/navPrefStore";
 import { NavigatorPickerSheet } from "@/components/maps/NavigatorPickerSheet";
@@ -44,6 +43,7 @@ import { cn } from "@/lib/cn";
 
 type View = "list" | "map";
 type Sort = "eta" | "distance" | "capacity";
+type SelectedHospitalSnapshot = Pick<Hospital, "id" | "name" | "etaMin" | "distanceKm" | "capacity">;
 
 const MIN_RADIUS_KM = 1;
 const MAX_RADIUS_KM = 200;
@@ -77,6 +77,7 @@ export default function SearchResultsPage() {
   const [sort, setSort] = useState<Sort>("eta");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [radiusKm, setRadiusKm] = useState<number>(DEFAULT_RADIUS_KM);
+  const latestRecordedHospitalId = useRef<string | null>(null);
 
   // 길안내(navigation) — 사용자가 첫 사용 시 picker 로 내비 앱을 고르고,
   // 한 번 선택된 앱은 navPrefStore 에 저장되어 다음 길안내부터는 picker 없이
@@ -89,16 +90,64 @@ export default function SearchResultsPage() {
     lat: number;
     lng: number;
     name: string;
+    etaMin: number;
+    distanceKm: number;
+    capacity: Hospital["capacity"];
   } | null>(null);
+
+  const recordHospital = (
+    hospital: SelectedHospitalSnapshot,
+    actionType?: "navigate" | "call",
+  ) => {
+    const actionTaken = actionType
+      ? {
+          type: actionType,
+          hospitalId: hospital.id,
+          hospitalName: hospital.name,
+          ts: Date.now(),
+        }
+      : undefined;
+
+    if (latestRecordedHospitalId.current === hospital.id) {
+      if (actionTaken) updateLatestAction(actionTaken);
+      return;
+    }
+
+    addHistory({
+      symptoms,
+      gender,
+      ageBand,
+      notes,
+      coords,
+      address: null,
+      selectedHospital: {
+        id: hospital.id,
+        name: hospital.name,
+        etaMin: hospital.etaMin,
+        distanceKm: hospital.distanceKm,
+        capacity: hospital.capacity,
+      },
+      actionTaken,
+    });
+    latestRecordedHospitalId.current = hospital.id;
+  };
 
   const handleNavigate = (hospital: Hospital) => {
     if (!coords) return;
-    const dest = { id: hospital.id, lat: hospital.lat, lng: hospital.lng, name: hospital.name };
+    const dest = {
+      id: hospital.id,
+      lat: hospital.lat,
+      lng: hospital.lng,
+      name: hospital.name,
+      etaMin: hospital.etaMin,
+      distanceKm: hospital.distanceKm,
+      capacity: hospital.capacity,
+    };
     const origin = { lat: coords.lat, lng: coords.lng, name: "현재 위치" };
     const saved = getNavApp(navId);
     if (saved) {
+      recordHospital(hospital, "navigate");
       launchNavigation(saved, origin, dest);
-      updateLatestAction({ type: "navigate", hospitalId: hospital.id, hospitalName: hospital.name, ts: Date.now() });
       return;
     }
     setPendingDest(dest);
@@ -112,10 +161,10 @@ export default function SearchResultsPage() {
     const app = getNavApp(id);
     if (!app) return;
     const origin = { lat: coords.lat, lng: coords.lng, name: "현재 위치" };
+    recordHospital(pendingDest, "navigate");
     // 사용자 탭 → 내비 앱 진입을 같은 user gesture 내에서 처리해야
     // iOS Safari 등에서 deep link 차단을 피한다.
     launchNavigation(app, origin, pendingDest);
-    updateLatestAction({ type: "navigate", hospitalId: pendingDest.id, hospitalName: pendingDest.name, ts: Date.now() });
     setPendingDest(null);
   };
 
@@ -150,77 +199,35 @@ export default function SearchResultsPage() {
     refetchOnWindowFocus: true,
   });
 
+  const resultHospitals = data?.hospitals ?? [];
+
   // 정원(BedTotals) 은 응답 속도를 위해 메인 검색 응답에서 빠져 있다.
-  // 사용자가 선택한(active) 카드의 정원만 lazy 로 단건 fetch 해서 X/Y 표시를 채운다.
-  // 결과는 24h 캐싱되므로 동일 hpid 재선택 시 즉시 hit.
-  const { data: selectedTotals } = useQuery({
-    queryKey: ["hospitalTotals", selectedId],
-    queryFn: ({ signal }) => fetchHospitalTotals(selectedId!, signal),
-    enabled: Boolean(selectedId),
-    staleTime: 60 * 60 * 1000,
-    gcTime: 60 * 60 * 1000,
+  // 그래프를 카드 선택 전부터 보여주기 위해 검색 결과가 도착하면 각 병원의
+  // 정원 정보를 병렬로 받아와 카드에 병합한다. 결과는 24h 캐싱된다.
+  const totalsQueries = useQueries({
+    queries: resultHospitals.map((hospital) => ({
+      queryKey: ["hospitalTotals", hospital.id],
+      queryFn: ({ signal }) => fetchHospitalTotals(hospital.id, signal),
+      staleTime: 60 * 60 * 1000,
+      gcTime: 60 * 60 * 1000,
+    })),
   });
 
   const hospitals = useMemo(() => {
-    const list = [...(data?.hospitals ?? [])];
+    const list = resultHospitals.map((hospital, index) => {
+      const totals = totalsQueries[index]?.data;
+      return totals && !hospital.totals ? { ...hospital, totals } : hospital;
+    });
     if (sort === "eta") list.sort((a, b) => a.etaMin - b.etaMin);
     if (sort === "distance") list.sort((a, b) => a.distanceKm - b.distanceKm);
     if (sort === "capacity") {
       const score = { available: 0, busy: 1, full: 2, unknown: 3 } as const;
       list.sort((a, b) => score[a.capacity] - score[b.capacity]);
     }
-    // 선택된 hpid 항목에 lazy fetch 한 정원 정보 머지 (이미 있으면 보존).
-    if (selectedId && selectedTotals) {
-      return list.map((h) =>
-        h.id === selectedId && !h.totals ? { ...h, totals: selectedTotals } : h,
-      );
-    }
     return list;
-  }, [data, sort, selectedId, selectedTotals]);
+  }, [resultHospitals, sort, totalsQueries]);
 
   const availableCount = hospitals.filter((h) => h.capacity === "available").length;
-
-  // Save the search outcome to local history exactly once when results arrive.
-  // Reverse-geocoding 은 race 없이 결과가 도착하면 address 필드를 채우는 방식.
-  const [savedKey, setSavedKey] = useState<string | null>(null);
-  useEffect(() => {
-    if (!coords || !data || data.hospitals.length === 0) return;
-    const key = `${coords.lat},${coords.lng}|${data.generatedAt}`;
-    if (key === savedKey) return;
-
-    let cancelled = false;
-    // 역지오코딩을 먼저 시도하고, 실패해도 즉시 저장 — 사용자의 기록 저장을
-    // 네트워크 주소 조회에 블로킹시키지 않는다.
-    (async () => {
-      let address: string | null = null;
-      try {
-        address = await reverseGeocode(coords.lat, coords.lng);
-      } catch {
-        /* ignore — address 는 null 로 둔다 */
-      }
-      if (cancelled) return;
-      addHistory({
-        symptoms,
-        gender,
-        ageBand,
-        notes,
-        coords,
-        address,
-        topResults: data.hospitals.slice(0, 3).map((h) => ({
-          id: h.id,
-          name: h.name,
-          etaMin: h.etaMin,
-          distanceKm: h.distanceKm,
-          capacity: h.capacity,
-        })),
-      });
-      setSavedKey(key);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [coords, data, symptoms, gender, ageBand, notes, addHistory, savedKey]);
 
   // No coords → user landed here directly. Bounce to /search.
   if (!enabled) {
@@ -343,7 +350,10 @@ export default function SearchResultsPage() {
                       hospital={h}
                       index={i}
                       active={selectedId === h.id}
-                      onTap={() => setSelectedId(h.id)}
+                      onTap={() => {
+                        setSelectedId(h.id);
+                        recordHospital(h);
+                      }}
                       onDirections={() => handleNavigate(h)}
                       isFavorited={favorites.some((f) => f.id === h.id)}
                       onToggleFavorite={() => {
@@ -353,7 +363,7 @@ export default function SearchResultsPage() {
                           addFavorite({ id: h.id, name: h.name, address: h.address ?? "", tel: h.tel, lat: h.lat, lng: h.lng });
                         }
                       }}
-                      onCall={() => updateLatestAction({ type: "call", hospitalId: h.id, hospitalName: h.name, ts: Date.now() })}
+                      onCall={() => recordHospital(h, "call")}
                     />
                   ))
                 )}
@@ -426,7 +436,10 @@ export default function SearchResultsPage() {
                         index={i}
                         hospital={h}
                         active={selectedId === h.id}
-                        onTap={() => setSelectedId(h.id)}
+                        onTap={() => {
+                          setSelectedId(h.id);
+                          recordHospital(h);
+                        }}
                       />
                     ))}
                   </div>

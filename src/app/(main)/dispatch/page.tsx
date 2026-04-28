@@ -242,35 +242,27 @@ function DispatchContent() {
                             </p>
                           )}
 
-                          {/* Top results */}
-                          {e.topResults.length > 0 && (
-                            <ul className="mt-3 divide-y divide-border overflow-hidden rounded-[var(--radius-md)] border border-border">
-                              {e.topResults.map((r) => {
-                                const meta =
+                          {/* 선택/전화/길안내한 병원 */}
+                          {e.selectedHospital && (
+                            <div className="mt-3 flex items-center gap-3 rounded-[var(--radius-md)] border border-border px-3 py-2.5">
+                              <span
+                                className={cn(
+                                  "size-1.5 shrink-0 rounded-full",
                                   CAPACITY_META[
-                                    r.capacity === "unknown" ? "busy" : r.capacity
-                                  ];
-                                return (
-                                  <li
-                                    key={r.id}
-                                    className="flex items-center gap-3 px-3 py-2.5"
-                                  >
-                                    <span
-                                      className={cn(
-                                        "size-1.5 shrink-0 rounded-full",
-                                        meta.dot,
-                                      )}
-                                    />
-                                    <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-text">
-                                      {r.name}
-                                    </span>
-                                    <span className="font-mono text-[12px] tabular-nums text-text-muted">
-                                      {r.etaMin}분 · {r.distanceKm.toFixed(1)}km
-                                    </span>
-                                  </li>
-                                );
-                              })}
-                            </ul>
+                                    e.selectedHospital.capacity === "unknown"
+                                      ? "busy"
+                                      : e.selectedHospital.capacity
+                                  ].dot,
+                                )}
+                              />
+                              <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-text">
+                                {e.selectedHospital.name}
+                              </span>
+                              <span className="font-mono text-[12px] tabular-nums text-text-muted">
+                                {e.selectedHospital.etaMin}분 ·{" "}
+                                {e.selectedHospital.distanceKm.toFixed(1)}km
+                              </span>
+                            </div>
                           )}
 
                           {/* 출발지 */}

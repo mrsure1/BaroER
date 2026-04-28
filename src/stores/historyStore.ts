@@ -18,8 +18,8 @@ export interface HistoryEntry {
    * 좌표 폴백으로 대체 표시된다.
    */
   address?: string | null;
-  /** Top result snapshot — display only */
-  topResults: Pick<Hospital, "id" | "name" | "etaMin" | "distanceKm" | "capacity">[];
+  /** 사용자가 선택/전화/길안내한 병원 스냅샷 — display only */
+  selectedHospital: Pick<Hospital, "id" | "name" | "etaMin" | "distanceKm" | "capacity"> | null;
   /** 검색 후 실제로 수행한 행동 (길안내 또는 전화). */
   actionTaken?: {
     type: "navigate" | "call";
@@ -70,7 +70,8 @@ export const useHistoryStore = create<HistoryState>()(
       storage: createJSONStorage(() => localStorage),
       // v2: replaced numeric `age` with `ageBand` enum.
       // v3: added optional `address` (reverse-geocoded Korean address).
-      version: 3,
+      // v4: replace top-3 result snapshots with a single selected hospital.
+      version: 4,
       migrate: (persisted, fromVersion) => {
         if (!persisted || typeof persisted !== "object") return persisted as HistoryState;
         let entries = (persisted as { entries?: Array<Record<string, unknown>> }).entries ?? [];
@@ -81,6 +82,13 @@ export const useHistoryStore = create<HistoryState>()(
         if (fromVersion < 3) {
           // v2 → v3: add address (null) — 기존 레코드는 좌표로만 표시.
           entries = entries.map((e) => ({ address: null, ...e }));
+        }
+        if (fromVersion < 4) {
+          // v3 → v4: 새 기록은 선택 병원만 저장한다. 기존 topResults 는 버린다.
+          entries = entries.map(({ topResults: _drop, ...rest }) => ({
+            ...rest,
+            selectedHospital: null,
+          }));
         }
         // migrate 는 저장 대상 state shape 만 반환 — 타입은 partial 로 안전하게.
         return { entries } as unknown as HistoryState;
