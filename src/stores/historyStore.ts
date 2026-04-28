@@ -20,6 +20,13 @@ export interface HistoryEntry {
   address?: string | null;
   /** Top result snapshot — display only */
   topResults: Pick<Hospital, "id" | "name" | "etaMin" | "distanceKm" | "capacity">[];
+  /** 검색 후 실제로 수행한 행동 (길안내 또는 전화). */
+  actionTaken?: {
+    type: "navigate" | "call";
+    hospitalId: string;
+    hospitalName: string;
+    ts: number;
+  };
 }
 
 interface HistoryState {
@@ -27,6 +34,8 @@ interface HistoryState {
   add: (entry: Omit<HistoryEntry, "id" | "ts">) => void;
   remove: (id: string) => void;
   clear: () => void;
+  /** 가장 최근 기록 항목의 행동 결과(길안내/전화)를 업데이트한다. */
+  updateLatestAction: (action: HistoryEntry["actionTaken"]) => void;
 }
 
 const MAX_ENTRIES = 50;
@@ -46,6 +55,15 @@ export const useHistoryStore = create<HistoryState>()(
         }),
       remove: (id) => set((s) => ({ entries: s.entries.filter((e) => e.id !== id) })),
       clear: () => set({ entries: [] }),
+      updateLatestAction: (action) =>
+        set((s) => {
+          if (s.entries.length === 0) return s;
+          return {
+            entries: s.entries.map((e, i) =>
+              i === 0 ? { ...e, actionTaken: action } : e,
+            ),
+          };
+        }),
     }),
     {
       name: "baroer-search-history",

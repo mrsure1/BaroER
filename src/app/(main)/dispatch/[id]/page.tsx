@@ -123,6 +123,12 @@ function ReportDocumentLayout({
   const fmtDt = (s: string) => (s ? formatDateTimeKR(s) : "-");
   const v = report.vitals;
 
+  const crewMembers = report.crewMembers ?? [];
+  const vitalSeries = report.vitalSeries ?? [];
+  const medications = report.medications ?? [];
+  const hospitalContacts = report.hospitalContacts ?? [];
+  const cpr = report.cpr ?? null;
+
   return (
     <>
       {/* 화면 전용 액션 바 (인쇄 시 숨김) */}
@@ -156,7 +162,6 @@ function ReportDocumentLayout({
         </div>
       </div>
 
-      {/* 문서 본문 — 흰 종이 위 검정 글씨 톤(라이트 모드 기준)으로 인쇄 친화적 */}
       <article className="report-doc mx-auto my-4 w-full max-w-[760px] bg-surface px-6 py-7 text-text shadow-[var(--shadow-sm)] print:my-0 print:max-w-none print:bg-white print:px-0 print:py-0 print:shadow-none">
         <header className="mb-5 flex items-end justify-between border-b-2 border-text pb-3">
           <div>
@@ -183,11 +188,15 @@ function ReportDocumentLayout({
           </div>
         </header>
 
+        {/* 출동 정보 */}
         <DocSection title="출동 정보">
           <DocGrid>
             <DocCell label="소속">{report.unitCode || "-"}</DocCell>
             <DocCell label="차량번호">{report.vehicleNo || "-"}</DocCell>
             <DocCell label="작성자">{report.crewName || "-"}</DocCell>
+            <DocCell label="추가 대원">
+              {crewMembers.length > 0 ? crewMembers.join(", ") : "-"}
+            </DocCell>
             <DocCell label="현장 주소" wide>
               {report.sceneAddress || "-"}
             </DocCell>
@@ -200,6 +209,7 @@ function ReportDocumentLayout({
           </DocGrid>
         </DocSection>
 
+        {/* 환자 정보 */}
         <DocSection title="환자 정보">
           <DocGrid>
             <DocCell label="성명">{report.patientName || "신원 미상"}</DocCell>
@@ -220,6 +230,7 @@ function ReportDocumentLayout({
           </DocGrid>
         </DocSection>
 
+        {/* 주 증상 · 분류 */}
         <DocSection title="주 증상 · 분류">
           <DocGrid>
             <DocCell label="발병/사고 유형">{report.reason || "-"}</DocCell>
@@ -254,7 +265,8 @@ function ReportDocumentLayout({
           </DocGrid>
         </DocSection>
 
-        <DocSection title="활력 징후">
+        {/* 활력 징후 — 1차 측정 */}
+        <DocSection title="활력 징후 (1차 측정)">
           <DocGrid>
             <DocCell label="혈압">
               {v.bpSystolic || v.bpDiastolic
@@ -279,6 +291,48 @@ function ReportDocumentLayout({
           </DocGrid>
         </DocSection>
 
+        {/* 시계열 활력징후 — 추가 측정이 있을 때만 표시 */}
+        {vitalSeries.length > 0 && (
+          <DocSection title="추가 활력징후 측정 (시계열)">
+            {vitalSeries.map((vs, i) => (
+              <div key={vs.id} className="border-b border-border last:border-0">
+                <p className="px-3 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wider text-text-muted">
+                  {i + 2}차 측정
+                  {vs.measuredAt ? ` · ${fmtDt(vs.measuredAt)}` : ""}
+                </p>
+                <DocGrid>
+                  <DocCell label="혈압">
+                    {vs.bpSystolic || vs.bpDiastolic
+                      ? `${vs.bpSystolic || "?"}/${vs.bpDiastolic || "?"} mmHg`
+                      : "-"}
+                  </DocCell>
+                  <DocCell label="맥박">
+                    {vs.pulse ? `${vs.pulse} bpm` : "-"}
+                  </DocCell>
+                  <DocCell label="호흡">
+                    {vs.resp ? `${vs.resp} /분` : "-"}
+                  </DocCell>
+                  <DocCell label="SpO₂">
+                    {vs.spo2 ? `${vs.spo2} %` : "-"}
+                  </DocCell>
+                  <DocCell label="체온">
+                    {vs.temp ? `${vs.temp} ℃` : "-"}
+                  </DocCell>
+                  <DocCell label="혈당">
+                    {vs.glucose ? `${vs.glucose} mg/dL` : "-"}
+                  </DocCell>
+                  {vs.note && (
+                    <DocCell label="소견" wide>
+                      {vs.note}
+                    </DocCell>
+                  )}
+                </DocGrid>
+              </div>
+            ))}
+          </DocSection>
+        )}
+
+        {/* 처치 내역 */}
         <DocSection title="처치 내역">
           <DocGrid>
             <DocCell label="시행 처치" wide>
@@ -294,17 +348,104 @@ function ReportDocumentLayout({
           </DocGrid>
         </DocSection>
 
+        {/* CPR 타임라인 */}
+        {cpr && (
+          <DocSection title="CPR 타임라인">
+            <DocGrid>
+              <DocCell label="CPR 시작">{fmtDt(cpr.startedAt)}</DocCell>
+              <DocCell label="CPR 종료">{fmtDt(cpr.endedAt)}</DocCell>
+              <DocCell label="AED 제세동">
+                {cpr.aedCount > 0 ? `${cpr.aedCount}회` : "-"}
+              </DocCell>
+              <DocCell label="ROSC">
+                {cpr.rosc
+                  ? `있음${cpr.roscAt ? ` · ${fmtDt(cpr.roscAt)}` : ""}`
+                  : "없음"}
+              </DocCell>
+            </DocGrid>
+          </DocSection>
+        )}
+
+        {/* 약물 투여 상세 */}
+        {medications.length > 0 && (
+          <DocSection title="약물 투여 상세">
+            {medications.map((med, i) => (
+              <div key={med.id} className="border-b border-border last:border-0">
+                <p className="px-3 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wider text-text-muted">
+                  약물 {i + 1}
+                </p>
+                <DocGrid>
+                  <DocCell label="약명">{med.name || "-"}</DocCell>
+                  <DocCell label="용량">{med.dose || "-"}</DocCell>
+                  <DocCell label="경로">
+                    {med.route || "-"}
+                  </DocCell>
+                  <DocCell label="투여 시각">{fmtDt(med.administeredAt)}</DocCell>
+                  {med.note && (
+                    <DocCell label="특이 반응" wide>
+                      {med.note}
+                    </DocCell>
+                  )}
+                </DocGrid>
+              </div>
+            ))}
+          </DocSection>
+        )}
+
+        {/* 병원 사전 연락 */}
+        {hospitalContacts.length > 0 && (
+          <DocSection title="병원 사전 연락">
+            {hospitalContacts.map((c, i) => (
+              <div key={c.id} className="border-b border-border last:border-0">
+                <p className="px-3 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wider text-text-muted">
+                  연락 {i + 1}
+                </p>
+                <DocGrid>
+                  <DocCell label="병원명" wide>
+                    {c.hospitalName || "-"}
+                  </DocCell>
+                  <DocCell label="연락 시각">{fmtDt(c.contactedAt)}</DocCell>
+                  <DocCell label="수용 여부">
+                    {c.accepted === true
+                      ? "수용"
+                      : c.accepted === false
+                        ? "거부"
+                        : "미확인"}
+                  </DocCell>
+                  {c.accepted === false && c.refusalReason && (
+                    <DocCell label="거부 사유" wide>
+                      {c.refusalReason}
+                    </DocCell>
+                  )}
+                </DocGrid>
+              </div>
+            ))}
+          </DocSection>
+        )}
+
+        {/* 이송 정보 */}
         <DocSection title="이송 정보">
           <DocGrid>
             <DocCell label="이송 병원" wide>
               {report.destinationHospital || "-"}
             </DocCell>
+            <DocCell label="이송 거부">
+              {report.transportRefused
+                ? `거부${report.transportRefusalSigned ? " (서명 완료)" : " (서명 미완)"}`
+                : "이송 완료"}
+            </DocCell>
+            {report.transportRefused && report.transportRefusalReason && (
+              <DocCell label="거부 사유" wide>
+                {report.transportRefusalReason}
+              </DocCell>
+            )}
             <DocCell label="이송 사유 / 인계 내용" wide block>
               {report.transportMemo || "-"}
             </DocCell>
           </DocGrid>
         </DocSection>
 
+        {/* 특이사항 */}
         <DocSection title="특이사항">
           <DocGrid>
             <DocCell label="비고" wide block>
@@ -334,7 +475,6 @@ function ReportDocumentLayout({
         </p>
       </article>
 
-      {/* 인쇄 전용 스타일 — 화면용 chrome 숨기고 종이 여백 확보 */}
       <style jsx global>{`
         @media print {
           html,

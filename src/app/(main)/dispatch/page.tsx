@@ -15,8 +15,11 @@ import {
   History,
   Loader2,
   MapPin,
+  Navigation,
   Pencil,
+  Phone,
   Search as SearchIcon,
+  Star,
   Trash2,
   X,
 } from "lucide-react";
@@ -27,6 +30,7 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { ScreenHeader } from "@/components/common/ScreenHeader";
 import { useHistoryStore } from "@/stores/historyStore";
 import { useAuthStore } from "@/stores/authStore";
+import { useFavoritesStore, type FavoriteHospital } from "@/stores/favoritesStore";
 import {
   KTAS_OPTIONS,
   type DispatchReport,
@@ -37,13 +41,14 @@ import { CAPACITY_META } from "@/lib/mockHospitals";
 import { ktasKoLabel } from "@/lib/ktasGuide";
 import { cn } from "@/lib/cn";
 
-type Tab = "history" | "dispatch";
+type Tab = "history" | "favorites" | "dispatch";
 
 const tabOptions = [
   { value: "history" as const, label: "내 기록", icon: <History className="size-4" /> },
+  { value: "favorites" as const, label: "즐겨찾기", icon: <Star className="size-4" /> },
   {
     value: "dispatch" as const,
-    label: "구급대 리포트",
+    label: "구급 리포트",
     icon: <Activity className="size-4" />,
   },
 ];
@@ -51,10 +56,6 @@ const tabOptions = [
 const symptomLabel = new Map(SYMPTOMS.map((s) => [s.id, s] as const));
 const ageBandLabel = new Map(AGE_BANDS.map((b) => [b.value, b] as const));
 
-/**
- * 최근 기록 카드에 노출하는 환자 요약.
- * 연령대·성별·증상의 critical 여부로 짧은 한 줄을 만들어 준다.
- */
 function patientSummary(
   gender: "M" | "F" | null,
   ageBand: string | null,
@@ -91,17 +92,21 @@ export default function DispatchPage() {
 function DispatchContent() {
   const sp = useSearchParams();
   const initialTab: Tab =
-    sp.get("tab") === "dispatch" ? "dispatch" : "history";
+    sp.get("tab") === "dispatch"
+      ? "dispatch"
+      : sp.get("tab") === "favorites"
+        ? "favorites"
+        : "history";
   const [tab, setTab] = useState<Tab>(initialTab);
   const entries = useHistoryStore((s) => s.entries);
   const clear = useHistoryStore((s) => s.clear);
   const remove = useHistoryStore((s) => s.remove);
   const user = useAuthStore((s) => s.user);
   const isParamedic = user?.userType === "PARAMEDIC";
+  const favorites = useFavoritesStore((s) => s.favorites);
+  const removeFavorite = useFavoritesStore((s) => s.remove);
   const [confirmingClear, setConfirmingClear] = useState(false);
 
-  // 구급 리포트 목록 — supabase 에서 fetch.
-  // 구급대원이 아니거나 미로그인이면 fetch 시도하지 않는다 (RLS 로 어차피 빈 결과).
   const [from, setFrom] = useState<string>("");
   const [to, setTo] = useState<string>("");
   const [q, setQ] = useState<string>("");
@@ -119,29 +124,37 @@ function DispatchContent() {
     queryClient.invalidateQueries({ queryKey: ["dispatch-reports"] });
   };
 
-  // URL query 가 변경되면 tab 도 동기화 (구급대원 홈의 "리포트 작성" 진입 등)
   useEffect(() => {
     const t = sp.get("tab");
     if (t === "dispatch") setTab("dispatch");
+    else if (t === "favorites") setTab("favorites");
     else if (t === "history") setTab("history");
   }, [sp]);
+
+  const headerRight =
+    tab === "history" && entries.length > 0 ? (
+      <IconButton
+        variant="ghost"
+        aria-label="전체 삭제"
+        onClick={() => setConfirmingClear(true)}
+      >
+        <Trash2 className="text-status-full" />
+      </IconButton>
+    ) : undefined;
+
+  const subtitle =
+    tab === "history"
+      ? `총 ${entries.length}건의 검색 기록`
+      : tab === "favorites"
+        ? `저장된 병원 ${favorites.length}곳`
+        : "구급활동일지";
 
   return (
     <>
       <ScreenHeader
         title="검색·출동 기록"
-        subtitle={`총 ${entries.length}건의 검색 기록`}
-        right={
-          tab === "history" && entries.length > 0 ? (
-            <IconButton
-              variant="ghost"
-              aria-label="전체 삭제"
-              onClick={() => setConfirmingClear(true)}
-            >
-              <Trash2 className="text-status-full" />
-            </IconButton>
-          ) : undefined
-        }
+        subtitle={subtitle}
+        right={headerRight}
       />
 
       <div className="mx-auto w-full max-w-[520px] px-5 pb-6">
@@ -163,7 +176,9 @@ function DispatchContent() {
                 exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.18 }}
               >
-                {entries.length === 0 ? <EmptyHistory /> : (
+                {entries.length === 0 ? (
+                  <EmptyHistory />
+                ) : (
                   <ul className="flex flex-col gap-2.5">
                     {entries.map((e, i) => (
                       <motion.li
@@ -231,10 +246,21 @@ function DispatchContent() {
                           {e.topResults.length > 0 && (
                             <ul className="mt-3 divide-y divide-border overflow-hidden rounded-[var(--radius-md)] border border-border">
                               {e.topResults.map((r) => {
-                                const meta = CAPACITY_META[r.capacity === "unknown" ? "busy" : r.capacity];
+                                const meta =
+                                  CAPACITY_META[
+                                    r.capacity === "unknown" ? "busy" : r.capacity
+                                  ];
                                 return (
-                                  <li key={r.id} className="flex items-center gap-3 px-3 py-2.5">
-                                    <span className={cn("size-1.5 shrink-0 rounded-full", meta.dot)} />
+                                  <li
+                                    key={r.id}
+                                    className="flex items-center gap-3 px-3 py-2.5"
+                                  >
+                                    <span
+                                      className={cn(
+                                        "size-1.5 shrink-0 rounded-full",
+                                        meta.dot,
+                                      )}
+                                    />
                                     <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-text">
                                       {r.name}
                                     </span>
@@ -247,7 +273,7 @@ function DispatchContent() {
                             </ul>
                           )}
 
-                          {/* 출발지 (역지오코딩된 한글 주소 > 좌표 폴백) */}
+                          {/* 출발지 */}
                           {e.coords && (
                             <div className="mt-2 flex items-start gap-1.5 text-[11.5px] text-text-subtle">
                               <MapPin className="mt-[1px] size-3 shrink-0" />
@@ -264,11 +290,38 @@ function DispatchContent() {
                               </span>
                             </div>
                           )}
+
+                          {/* 행동 결과 */}
+                          {e.actionTaken && (
+                            <div className="mt-2 flex items-center gap-1.5 rounded-[var(--radius-sm)] bg-primary-soft px-2.5 py-1.5 text-[11.5px]">
+                              {e.actionTaken.type === "navigate" ? (
+                                <Navigation className="size-3 shrink-0 text-primary" />
+                              ) : (
+                                <Phone className="size-3 shrink-0 text-primary" />
+                              )}
+                              <span className="font-semibold text-primary">
+                                {e.actionTaken.type === "navigate" ? "길안내" : "전화"}
+                              </span>
+                              <span className="text-text-muted">
+                                → {e.actionTaken.hospitalName}
+                              </span>
+                            </div>
+                          )}
                         </Card>
                       </motion.li>
                     ))}
                   </ul>
                 )}
+              </motion.div>
+            ) : tab === "favorites" ? (
+              <motion.div
+                key="favorites"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.18 }}
+              >
+                <FavoritesList favorites={favorites} onRemove={removeFavorite} />
               </motion.div>
             ) : (
               <motion.div
@@ -320,12 +373,19 @@ function DispatchContent() {
               className="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+88px)] z-50 mx-auto max-w-[420px]"
             >
               <Card className="p-5 shadow-[var(--shadow-lg)]">
-                <h3 className="text-[16px] font-bold text-text">검색 기록을 모두 삭제할까요?</h3>
+                <h3 className="text-[16px] font-bold text-text">
+                  검색 기록을 모두 삭제할까요?
+                </h3>
                 <p className="mt-1 text-[13px] text-text-muted">
-                  이 작업은 되돌릴 수 없어요. 기기에 저장된 모든 검색 기록이 삭제됩니다.
+                  이 작업은 되돌릴 수 없어요. 기기에 저장된 모든 검색 기록이
+                  삭제됩니다.
                 </p>
                 <div className="mt-4 flex gap-2">
-                  <Button variant="outline" fullWidth onClick={() => setConfirmingClear(false)}>
+                  <Button
+                    variant="outline"
+                    fullWidth
+                    onClick={() => setConfirmingClear(false)}
+                  >
                     취소
                   </Button>
                   <Button
@@ -348,6 +408,8 @@ function DispatchContent() {
   );
 }
 
+// ─── 일반인: 검색 기록 빈 상태 ──────────────────────────────────────────────
+
 function EmptyHistory() {
   return (
     <Card className="flex flex-col items-center gap-3 px-6 py-12 text-center">
@@ -363,6 +425,119 @@ function EmptyHistory() {
     </Card>
   );
 }
+
+// ─── 일반인: 즐겨찾기 ────────────────────────────────────────────────────────
+
+function FavoritesList({
+  favorites,
+  onRemove,
+}: {
+  favorites: FavoriteHospital[];
+  onRemove: (id: string) => void;
+}) {
+  if (favorites.length === 0) {
+    return (
+      <Card className="flex flex-col items-center gap-3 px-6 py-12 text-center">
+        <div className="grid size-16 place-items-center rounded-full bg-surface-2 text-text-muted">
+          <Star className="size-7" />
+        </div>
+        <div>
+          <p className="text-[15px] font-semibold text-text">즐겨찾기가 없어요</p>
+          <p className="mt-1 text-[13px] text-text-muted">
+            응급실 검색 결과에서 ★를 눌러
+            <br />
+            자주 가는 병원을 저장하세요.
+          </p>
+        </div>
+        <Link href="/search">
+          <Button size="md" variant="outline">
+            응급실 검색하기
+          </Button>
+        </Link>
+      </Card>
+    );
+  }
+
+  return (
+    <ul className="flex flex-col gap-2.5">
+      {favorites.map((fav, i) => (
+        <motion.li
+          key={fav.id}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: Math.min(i * 0.03, 0.15) }}
+        >
+          <FavoriteCard fav={fav} onRemove={() => onRemove(fav.id)} />
+        </motion.li>
+      ))}
+    </ul>
+  );
+}
+
+function FavoriteCard({
+  fav,
+  onRemove,
+}: {
+  fav: FavoriteHospital;
+  onRemove: () => void;
+}) {
+  return (
+    <Card className="p-4">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <Star className="size-3.5 shrink-0 fill-amber-400 text-amber-400" />
+            <p className="truncate text-[15px] font-semibold text-text">
+              {fav.name}
+            </p>
+          </div>
+          {fav.address && (
+            <p className="mt-0.5 text-[12.5px] text-text-muted">{fav.address}</p>
+          )}
+        </div>
+        <IconButton
+          size="sm"
+          variant="ghost"
+          aria-label="즐겨찾기 삭제"
+          onClick={onRemove}
+        >
+          <Trash2 className="text-text-subtle" />
+        </IconButton>
+      </div>
+
+      {fav.tel && (
+        <a
+          href={`tel:${fav.tel}`}
+          className="mt-3 inline-flex items-center gap-2 text-[13.5px] font-semibold text-primary"
+        >
+          <Phone className="size-4" />
+          {fav.tel}
+        </a>
+      )}
+
+      <div className="mt-3 flex items-center justify-between">
+        <p className="text-[11px] text-text-subtle">
+          저장됨 · {relativeTime(fav.savedAt)}
+        </p>
+        <Link href="/search">
+          <button
+            type="button"
+            className="flex items-center gap-1 rounded-full bg-surface-2 px-2.5 py-1 text-[11.5px] font-medium text-text-muted hover:bg-border"
+          >
+            <SearchIcon className="size-3" />
+            응급실 검색
+          </button>
+        </Link>
+      </div>
+
+      <p className="mt-1.5 text-[11px] leading-relaxed text-text-subtle">
+        실시간 수용 현황은 응급실 검색에서 확인하세요.
+      </p>
+    </Card>
+  );
+}
+
+// ─── 구급대원: 리포트 목록 ────────────────────────────────────────────────────
 
 function DispatchReportsList({
   reports,
@@ -381,10 +556,6 @@ function DispatchReportsList({
   filter: { from: string; to: string; q: string };
   onFilterChange: (next: Partial<{ from: string; to: string; q: string }>) => void;
 }) {
-  // 비-구급대원에게는 작성 진입조차 허용하지 않고 안내 카드만 노출.
-  // 안내문과 링크를 분리해, "프로필 → 구급대원 전환" 링크 한 단어/한 줄을
-  // 보장한다. 카드 좌우 패딩을 px-4 로 축소해 360px 모바일에서도 한국어
-  // 폰트 기준으로 nowrap 가 깨지지 않게 폭을 확보한다.
   if (!isParamedic) {
     return (
       <Card className="px-4 py-10 text-center">
@@ -411,7 +582,6 @@ function DispatchReportsList({
 
   return (
     <div className="flex flex-col gap-3">
-      {/* 새 리포트 작성 CTA — 항상 최상단에 고정 */}
       <Link href="/dispatch/new" prefetch={false}>
         <Card className="flex items-center gap-3 border-dashed border-primary/40 bg-primary-soft/40 p-4 transition-colors hover:bg-primary-soft">
           <div className="grid size-11 place-items-center rounded-full bg-primary text-primary-fg">
@@ -429,7 +599,6 @@ function DispatchReportsList({
         </Card>
       </Link>
 
-      {/* 검색 · 날짜 필터 */}
       <Card className="space-y-2 p-3">
         <div className="relative">
           <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-subtle" />
@@ -487,9 +656,7 @@ function DispatchReportsList({
           </div>
           <div>
             <p className="text-[14.5px] font-semibold text-text">
-              {hasFilter
-                ? "조건에 맞는 리포트가 없어요"
-                : "작성된 리포트가 없어요"}
+              {hasFilter ? "조건에 맞는 리포트가 없어요" : "작성된 리포트가 없어요"}
             </p>
             <p className="mt-1 text-[12.5px] text-text-muted">
               {hasFilter
@@ -550,6 +717,13 @@ function DispatchReportRow({
   ]
     .filter(Boolean)
     .join(" · ");
+
+  const hasExtra =
+    (report.vitalSeries?.length ?? 0) > 0 ||
+    (report.medications?.length ?? 0) > 0 ||
+    (report.hospitalContacts?.length ?? 0) > 0 ||
+    report.cpr != null ||
+    report.transportRefused;
 
   return (
     <Card className="p-4">
@@ -625,6 +799,16 @@ function DispatchReportRow({
             AVPU {report.consciousness}
           </span>
         )}
+        {report.cpr && (
+          <span className="rounded-full bg-status-full-soft px-2 py-0.5 font-semibold text-status-full">
+            CPR {report.cpr.rosc ? "· ROSC" : ""}
+          </span>
+        )}
+        {report.transportRefused && (
+          <span className="rounded-full bg-status-busy-soft px-2 py-0.5 text-status-busy">
+            이송 거부
+          </span>
+        )}
       </div>
 
       <div className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5 text-[12px] text-text-muted">
@@ -633,6 +817,27 @@ function DispatchReportRow({
           <span>🏥 {report.destinationHospital}</span>
         )}
       </div>
+
+      {/* 추가 기록 요약 */}
+      {hasExtra && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {(report.vitalSeries?.length ?? 0) > 0 && (
+            <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-text-muted">
+              활력징후 {report.vitalSeries.length + 1}회 측정
+            </span>
+          )}
+          {(report.medications?.length ?? 0) > 0 && (
+            <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-text-muted">
+              약물 {report.medications.length}건
+            </span>
+          )}
+          {(report.hospitalContacts?.length ?? 0) > 0 && (
+            <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-text-muted">
+              사전 연락 {report.hospitalContacts.length}건
+            </span>
+          )}
+        </div>
+      )}
     </Card>
   );
 }

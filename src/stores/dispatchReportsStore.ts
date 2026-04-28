@@ -16,6 +16,50 @@ import { persist, createJSONStorage } from "zustand/middleware";
  * 저장된다. RLS 보호된 Supabase 테이블로의 upsync 는 후속 작업.
  */
 
+// ===== 구급대원 추가 기록 타입 =====
+
+/** 반복 활력징후 측정 1회분 */
+export interface VitalReading {
+  id: string;
+  measuredAt: string; // datetime-local
+  bpSystolic: string;
+  bpDiastolic: string;
+  pulse: string;
+  resp: string;
+  spo2: string;
+  temp: string;
+  glucose: string;
+  note: string;
+}
+
+/** 약물 투여 상세 1건 */
+export interface MedicationRecord {
+  id: string;
+  name: string;
+  dose: string;
+  route: "IV" | "IM" | "SL" | "PO" | "INH" | "";
+  administeredAt: string; // datetime-local
+  note: string;
+}
+
+/** 병원 사전 연락 1건 */
+export interface HospitalContact {
+  id: string;
+  hospitalName: string;
+  contactedAt: string; // datetime-local
+  accepted: boolean | null; // null = 미확인
+  refusalReason: string;
+}
+
+/** CPR 타임라인 */
+export interface CprTimeline {
+  startedAt: string;
+  endedAt: string;
+  rosc: boolean;
+  roscAt: string;
+  aedCount: number;
+}
+
 // ===== 상수 =====
 
 export type Consciousness = "A" | "V" | "P" | "U";
@@ -118,6 +162,24 @@ export interface DispatchReport {
 
   // 특이사항
   remarks: string;
+
+  // ── 추가 기록 ────────────────────────────────────────────────────────────
+  /** 추가 대원 이름 목록 (작성자 제외) */
+  crewMembers: string[];
+  /** 반복 활력징후 측정 (시계열) */
+  vitalSeries: VitalReading[];
+  /** 약물 투여 상세 */
+  medications: MedicationRecord[];
+  /** 병원 사전 연락 기록 */
+  hospitalContacts: HospitalContact[];
+  /** 이송 거부 여부 */
+  transportRefused: boolean;
+  /** 이송 거부 사유 */
+  transportRefusalReason: string;
+  /** 이송 거부 서명 여부 */
+  transportRefusalSigned: boolean;
+  /** CPR 타임라인 (심폐소생술 시행 시) */
+  cpr: CprTimeline | null;
 }
 
 export function createEmptyReport(): Omit<DispatchReport, "id" | "createdAt" | "updatedAt"> {
@@ -158,6 +220,15 @@ export function createEmptyReport(): Omit<DispatchReport, "id" | "createdAt" | "
     transportMemo: "",
 
     remarks: "",
+
+    crewMembers: [],
+    vitalSeries: [],
+    medications: [],
+    hospitalContacts: [],
+    transportRefused: false,
+    transportRefusalReason: "",
+    transportRefusalSigned: false,
+    cpr: null,
   };
 }
 
@@ -205,7 +276,26 @@ export const useDispatchReportsStore = create<ReportsState>()(
     {
       name: "baroer-dispatch-reports",
       storage: createJSONStorage(() => localStorage),
-      version: 1,
+      version: 2,
+      migrate: (persisted, fromVersion) => {
+        if (!persisted || typeof persisted !== "object") return persisted as ReportsState;
+        const reports = (persisted as { reports?: DispatchReport[] }).reports ?? [];
+        if (fromVersion < 2) {
+          // v1 → v2: 추가 기록 필드 기본값 삽입
+          const defaults = {
+            crewMembers: [],
+            vitalSeries: [],
+            medications: [],
+            hospitalContacts: [],
+            transportRefused: false,
+            transportRefusalReason: "",
+            transportRefusalSigned: false,
+            cpr: null,
+          };
+          return { reports: reports.map((r) => ({ ...defaults, ...r })) } as unknown as ReportsState;
+        }
+        return persisted as ReportsState;
+      },
     },
   ),
 );

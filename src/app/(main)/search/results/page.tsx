@@ -19,6 +19,8 @@ import {
   Scissors,
   Search as SearchIcon,
   ShieldAlert,
+  Star,
+  StarOff,
   Stethoscope,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -36,6 +38,7 @@ import { useNavPrefStore } from "@/stores/navPrefStore";
 import { NavigatorPickerSheet } from "@/components/maps/NavigatorPickerSheet";
 import { useSearchStore, type GeoReason } from "@/stores/searchStore";
 import { useHistoryStore } from "@/stores/historyStore";
+import { useFavoritesStore } from "@/stores/favoritesStore";
 import type { Hospital } from "@/types/hospital";
 import { cn } from "@/lib/cn";
 
@@ -65,6 +68,10 @@ export default function SearchResultsPage() {
   const ageBand = useSearchStore((s) => s.ageBand);
   const notes = useSearchStore((s) => s.notes);
   const addHistory = useHistoryStore((s) => s.add);
+  const updateLatestAction = useHistoryStore((s) => s.updateLatestAction);
+  const favorites = useFavoritesStore((s) => s.favorites);
+  const addFavorite = useFavoritesStore((s) => s.add);
+  const removeFavorite = useFavoritesStore((s) => s.remove);
 
   const [view, setView] = useState<View>("list");
   const [sort, setSort] = useState<Sort>("eta");
@@ -78,6 +85,7 @@ export default function SearchResultsPage() {
   const setNavPref = useNavPrefStore((s) => s.setNav);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pendingDest, setPendingDest] = useState<{
+    id: string;
     lat: number;
     lng: number;
     name: string;
@@ -85,11 +93,12 @@ export default function SearchResultsPage() {
 
   const handleNavigate = (hospital: Hospital) => {
     if (!coords) return;
-    const dest = { lat: hospital.lat, lng: hospital.lng, name: hospital.name };
+    const dest = { id: hospital.id, lat: hospital.lat, lng: hospital.lng, name: hospital.name };
     const origin = { lat: coords.lat, lng: coords.lng, name: "현재 위치" };
     const saved = getNavApp(navId);
     if (saved) {
       launchNavigation(saved, origin, dest);
+      updateLatestAction({ type: "navigate", hospitalId: hospital.id, hospitalName: hospital.name, ts: Date.now() });
       return;
     }
     setPendingDest(dest);
@@ -106,6 +115,7 @@ export default function SearchResultsPage() {
     // 사용자 탭 → 내비 앱 진입을 같은 user gesture 내에서 처리해야
     // iOS Safari 등에서 deep link 차단을 피한다.
     launchNavigation(app, origin, pendingDest);
+    updateLatestAction({ type: "navigate", hospitalId: pendingDest.id, hospitalName: pendingDest.name, ts: Date.now() });
     setPendingDest(null);
   };
 
@@ -335,6 +345,15 @@ export default function SearchResultsPage() {
                       active={selectedId === h.id}
                       onTap={() => setSelectedId(h.id)}
                       onDirections={() => handleNavigate(h)}
+                      isFavorited={favorites.some((f) => f.id === h.id)}
+                      onToggleFavorite={() => {
+                        if (favorites.some((f) => f.id === h.id)) {
+                          removeFavorite(h.id);
+                        } else {
+                          addFavorite({ id: h.id, name: h.name, address: h.address ?? "", tel: h.tel, lat: h.lat, lng: h.lng });
+                        }
+                      }}
+                      onCall={() => updateLatestAction({ type: "call", hospitalId: h.id, hospitalName: h.name, ts: Date.now() })}
                     />
                   ))
                 )}
@@ -491,12 +510,18 @@ function HospitalCard({
   active,
   onTap,
   onDirections,
+  isFavorited = false,
+  onToggleFavorite,
+  onCall,
 }: {
   hospital: Hospital;
   index: number;
   active: boolean;
   onTap: () => void;
   onDirections: () => void;
+  isFavorited?: boolean;
+  onToggleFavorite?: () => void;
+  onCall?: () => void;
 }) {
   const meta = CAPACITY_META[hospital.capacity];
   const er = hospital.realtime?.er ?? null;
@@ -622,15 +647,36 @@ function HospitalCard({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 divide-x divide-border border-t border-border bg-surface">
+        <div className="grid grid-cols-3 divide-x divide-border border-t border-border bg-surface">
           <a
             href={`tel:${hospital.tel}`}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onCall?.();
+            }}
             className="flex items-center justify-center gap-2 py-3 text-[13.5px] font-medium text-text transition-colors hover:bg-surface-2"
           >
             <Phone className="size-[16px]" />
             전화
           </a>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleFavorite?.();
+            }}
+            className={cn(
+              "flex items-center justify-center gap-1.5 py-3 text-[13px] font-medium transition-colors hover:bg-surface-2",
+              isFavorited ? "text-amber-500" : "text-text-muted",
+            )}
+          >
+            {isFavorited ? (
+              <StarOff className="size-[15px]" />
+            ) : (
+              <Star className="size-[15px]" />
+            )}
+            {isFavorited ? "저장됨" : "저장"}
+          </button>
           <button
             type="button"
             onClick={(e) => {
