@@ -295,7 +295,7 @@ function ReportDocumentLayout({
         {vitalSeries.length > 0 && (
           <DocSection title="추가 활력징후 측정 (시계열)">
             {vitalSeries.map((vs, i) => (
-              <div key={vs.id} className="border-b border-border last:border-0">
+              <div key={vs.id} className="border-b border-border last:border-0 print:break-inside-avoid">
                 <p className="px-3 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wider text-text-muted">
                   {i + 2}차 측정
                   {vs.measuredAt ? ` · ${fmtDt(vs.measuredAt)}` : ""}
@@ -370,7 +370,7 @@ function ReportDocumentLayout({
         {medications.length > 0 && (
           <DocSection title="약물 투여 상세">
             {medications.map((med, i) => (
-              <div key={med.id} className="border-b border-border last:border-0">
+              <div key={med.id} className="border-b border-border last:border-0 print:break-inside-avoid">
                 <p className="px-3 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wider text-text-muted">
                   약물 {i + 1}
                 </p>
@@ -396,7 +396,7 @@ function ReportDocumentLayout({
         {hospitalContacts.length > 0 && (
           <DocSection title="병원 사전 연락">
             {hospitalContacts.map((c, i) => (
-              <div key={c.id} className="border-b border-border last:border-0">
+              <div key={c.id} className="border-b border-border last:border-0 print:break-inside-avoid">
                 <p className="px-3 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wider text-text-muted">
                   연락 {i + 1}
                 </p>
@@ -512,7 +512,7 @@ function DocSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mb-4">
+    <section className="mb-4 print:break-inside-avoid">
       <h2 className="mb-1.5 inline-block border-b border-text/70 pb-0.5 text-[13px] font-bold tracking-wide">
         {title}
       </h2>
