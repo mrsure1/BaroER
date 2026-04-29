@@ -24,11 +24,11 @@
 * **Veo 3.1 프롬프트 (영상 생성용):**
   > Over-the-shoulder shot of a person speaking urgently into a smartphone. The phone screen shows a vibrant voice waveform animation, instantly followed by an AI analysis screen categorizing patient severity. High tech holographic elements floating slightly above the screen. Crisp, professional lighting, 60fps smooth animation.
 
-### Scene 4: 핵심 기능 2 - 구급대원용 자동 전화 및 로그 (35초 ~ 45초)
-* **내레이션/자막:** "동시 전화 확인부터 출동 일지 자동 작성까지, 구급대원의 업무를 획기적으로 줄여줍니다."
-* **화면 연출:** 구급대원이 태블릿을 터치하자 여러 병원에 동시에 수용 확인 요청이 전송되는 그래픽 애니메이션. 이후 깔끔한 출동 기록 PDF 문서가 생성되는 장면.
+### Scene 4: 핵심 기능 2 - 구급대원용 실시간 병상 정보 및 출동 일지 (35초 ~ 45초)
+* **내레이션/자막:** "이동 중에도 실시간 병상 확인은 물론, 터치 한 번으로 출동 일지가 자동 완성됩니다."
+* **화면 연출:** 구급차 안에서 구급대원이 태블릿으로 실시간 업데이트되는 권역 병상 정보를 확인하는 모습. 이후 깔끔한 출동 기록 PDF 문서가 자동으로 생성되는 장면.
 * **Veo 3.1 프롬프트 (영상 생성용):**
-  > Modern medical tablet displaying an automated dispatch system. Visualizing multiple signal lines connecting to different hospital icons simultaneously. A clean, automated PDF report slides into view. Clean white and blue color palette, professional tech aesthetic, smooth camera pan.
+  > Modern medical tablet displaying a real-time updating map with hospital bed availability numbers. A paramedic's hand touches the screen, and a clean, automated PDF report slides into view. Clean white and blue color palette, professional tech aesthetic, smooth camera pan.
 
 ### Scene 5: 아웃트로 - 팀 AI르네상스의 비전 (45초 ~ 60초)
 * **내레이션/자막:** "당신의 생명을 지키는 골든타임 수호자. 팀 AI르네상스가 '바로응급실'로 함께합니다."

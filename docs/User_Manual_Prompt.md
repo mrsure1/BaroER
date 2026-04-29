@@ -40,17 +40,12 @@
 > Main Title (Large, bold): "바로응급실 PRO"
 > Subtitle: "구급대원의 골든타임 수호 파트너"
 > 
-> Section 1 (With an icon of automated network signals):
-> "[원터치 다중 병원 수용 확인]"
-> "일일이 전화할 필요 없습니다."
-> "인근 병원 3~5곳에 시스템이 자동으로 수용 여부를 동시 확인합니다."
-> 
-> Section 2 (With an icon of a dashboard/real-time data):
+> Section 1 (With an icon of a dashboard/real-time data):
 > "[실시간 응급실 병상 정보]"
 > "구급차 이동 중에도 실시간 업데이트."
 > "권역/지역 응급의료센터 병상 수를 지도로 정확히 확인하세요."
 > 
-> Section 3 (With an icon of a digital PDF document/clipboard):
+> Section 2 (With an icon of a digital PDF document/clipboard):
 > "[자동 출동 로그 & 보고서]"
 > "출동부터 인계까지 타임스탬프 자동 기록."
 > "터치 한 번으로 PDF 출동 보고서를 완성하세요."
