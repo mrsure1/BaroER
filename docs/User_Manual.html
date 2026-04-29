@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>바로응급실(BaroER) 사용설명서</title>
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 폰트 설정 (Pretendard) */
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        body { font-family: 'Pretendard', sans-serif; background-color: #f3f4f6; }
+        
+        /* A4 사이즈 및 프린트 최적화 설정 */
+        .page-container {
+            max-width: 210mm;
+            min-height: 297mm;
+            background: white;
+            margin: 2rem auto;
+            padding: 40px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            position: relative;
+        }
+
+        /* 스마트폰 목업 프레임 CSS */
+        .phone-mockup {
+            width: 100%;
+            max-width: 280px;
+            aspect-ratio: 9/19.5;
+            background-color: #e5e7eb;
+            border: 8px solid #1f2937;
+            border-radius: 36px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            margin: 0 auto;
+        }
+        
+        /* 스크린샷 이미지 (사용자가 교체할 이미지) */
+        .phone-mockup img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* 이미지가 없을 때 보여줄 플레이스홀더 */
+        .placeholder-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #6b7280;
+            text-align: center;
+            font-size: 0.875rem;
+            width: 100%;
+            padding: 0 1rem;
+        }
+
+        @media print {
+            body { background: white; margin: 0; }
+            .page-container { margin: 0; box-shadow: none; border-bottom: 1px solid #ccc; page-break-after: always; }
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <!-- PAGE 1 : 일반 사용자용 -->
+    <div class="page-container flex flex-col">
+        <!-- 헤더 -->
+        <div class="text-center mb-12">
+            <span class="inline-block py-1 px-3 rounded-full bg-blue-100 text-blue-700 font-bold text-sm mb-4">일반 사용자용 가이드</span>
+            <h1 class="text-4xl font-extrabold tracking-tight text-gray-900 mb-2">바로응급실 <span class="text-blue-600">(BaroER)</span></h1>
+            <p class="text-xl text-gray-500">긴급할 때, 바로 찾는 가장 가까운 응급실</p>
+        </div>
+
+        <!-- 본문 (3단계 설명) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 flex-grow">
+            
+            <!-- Step 1 -->
+            <div class="text-center flex flex-col">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2"><span class="text-blue-500">1.</span> 증상 입력</h2>
+                    <p class="text-sm text-gray-600 mb-1">앱 설치 없이 브라우저 접속!</p>
+                    <p class="text-sm text-gray-600">다급할 땐 <strong>음성</strong>으로 증상을 말하면 AI가 중증도를 자동 판정합니다.</p>
+                </div>
+                <!-- 스크린샷 영역 1 -->
+                <div class="phone-mockup mt-auto">
+                    <span class="placeholder-text">여기에<br><b>screenshot1.png</b><br>이미지가 들어갑니다</span>
+                    <!-- 실제 사용 시 아래 src 경로를 스크린샷 이미지로 변경하세요 -->
+                    <img src="./assets/screenshot1.png" onerror="this.style.display='none'">
+                </div>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="text-center flex flex-col">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2"><span class="text-blue-500">2.</span> 내 주변 응급실</h2>
+                    <p class="text-sm text-gray-600 mb-1">수용 가능한 응급실이 지도에 표시됩니다.</p>
+                    <p class="text-sm text-gray-600"><span class="text-green-500 font-bold">🟢수용</span> <span class="text-orange-500 font-bold">🟠혼잡</span> <span class="text-red-500 font-bold">🔴불가</span> 상태를 직관적으로 확인하세요.</p>
+                </div>
+                <!-- 스크린샷 영역 2 -->
+                <div class="phone-mockup mt-auto">
+                    <span class="placeholder-text">여기에<br><b>screenshot2.png</b><br>이미지가 들어갑니다</span>
+                    <!-- 실제 사용 시 아래 src 경로를 스크린샷 이미지로 변경하세요 -->
+                    <img src="./assets/screenshot2.png" onerror="this.style.display='none'">
+                </div>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="text-center flex flex-col">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2"><span class="text-blue-500">3.</span> 길안내 연동</h2>
+                    <p class="text-sm text-gray-600 mb-1">병원을 선택하면 내비게이션 즉시 연결!</p>
+                    <p class="text-sm text-gray-600">카카오내비, T맵 등으로 1초 만에 최적 경로를 안내받으세요.</p>
+                </div>
+                <!-- 스크린샷 영역 3 -->
+                <div class="phone-mockup mt-auto">
+                    <span class="placeholder-text">여기에<br><b>screenshot3.png</b><br>이미지가 들어갑니다</span>
+                    <!-- 실제 사용 시 아래 src 경로를 스크린샷 이미지로 변경하세요 -->
+                    <img src="./assets/screenshot3.png" onerror="this.style.display='none'">
+                </div>
+            </div>
+
+        </div>
+        
+        <!-- 푸터 -->
+        <div class="mt-12 text-center text-sm text-gray-400 border-t pt-4">
+            팀 AI르네상스 - 골든타임 수호 프로젝트
+        </div>
+    </div>
+
+
+    <!-- PAGE 2 : 구급대원용 -->
+    <div class="page-container flex flex-col">
+        <!-- 헤더 -->
+        <div class="text-center mb-12">
+            <span class="inline-block py-1 px-3 rounded-full bg-red-100 text-red-700 font-bold text-sm mb-4">구급대원용 PRO 가이드</span>
+            <h1 class="text-4xl font-extrabold tracking-tight text-gray-900 mb-2">바로응급실 <span class="text-red-600">PRO</span></h1>
+            <p class="text-xl text-gray-500">구급대원의 골든타임 수호 파트너</p>
+        </div>
+
+        <!-- 본문 (3단계 설명) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 flex-grow">
+            
+            <!-- Step 1 -->
+            <div class="text-center flex flex-col">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2"><span class="text-red-500">1.</span> 다중 수용 확인</h2>
+                    <p class="text-sm text-gray-600 mb-1">일일이 전화할 필요 없습니다.</p>
+                    <p class="text-sm text-gray-600">인근 병원 3~5곳에 시스템이 자동으로 <strong>수용 여부를 동시 확인</strong>합니다.</p>
+                </div>
+                <!-- 스크린샷 영역 4 -->
+                <div class="phone-mockup mt-auto">
+                    <span class="placeholder-text">여기에<br><b>screenshot4.png</b><br>이미지가 들어갑니다</span>
+                    <!-- 실제 사용 시 아래 src 경로를 스크린샷 이미지로 변경하세요 -->
+                    <img src="./assets/screenshot4.png" onerror="this.style.display='none'">
+                </div>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="text-center flex flex-col">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2"><span class="text-red-500">2.</span> 실시간 병상 정보</h2>
+                    <p class="text-sm text-gray-600 mb-1">이동 중에도 실시간 업데이트!</p>
+                    <p class="text-sm text-gray-600">권역/지역 응급의료센터 <strong>병상 수를 지도로 정확히 확인</strong>하세요.</p>
+                </div>
+                <!-- 스크린샷 영역 5 -->
+                <div class="phone-mockup mt-auto">
+                    <span class="placeholder-text">여기에<br><b>screenshot5.png</b><br>이미지가 들어갑니다</span>
+                    <!-- 실제 사용 시 아래 src 경로를 스크린샷 이미지로 변경하세요 -->
+                    <img src="./assets/screenshot5.png" onerror="this.style.display='none'">
+                </div>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="text-center flex flex-col">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2"><span class="text-red-500">3.</span> 자동 출동 일지</h2>
+                    <p class="text-sm text-gray-600 mb-1">출동부터 인계까지 타임스탬프 자동 기록.</p>
+                    <p class="text-sm text-gray-600">터치 한 번으로 <strong>PDF 출동 보고서를 완성</strong>하여 보고 업무를 줄이세요.</p>
+                </div>
+                <!-- 스크린샷 영역 6 -->
+                <div class="phone-mockup mt-auto border-gray-400" style="background-color: white; border-radius: 8px; border-width: 1px;">
+                    <!-- 마지막 항목은 태블릿이나 문서 느낌을 주기 위해 테두리 스타일 변경 -->
+                    <span class="placeholder-text">여기에<br><b>screenshot6.png</b><br>이미지가 들어갑니다</span>
+                    <!-- 실제 사용 시 아래 src 경로를 스크린샷 이미지로 변경하세요 -->
+                    <img src="./assets/screenshot6.png" onerror="this.style.display='none'" style="border-radius: 8px;">
+                </div>
+            </div>
+
+        </div>
+        
+        <!-- 푸터 -->
+        <div class="mt-12 text-center text-sm text-gray-400 border-t pt-4">
+            팀 AI르네상스 - 골든타임 수호 프로젝트
+        </div>
+    </div>
+
+</body>
+</html>
