@@ -1,59 +1,65 @@
 # 바로응급실 (BaroER) 1~2페이지 사용설명서
 
-이 문서는 발표 및 배포용으로 사용할 수 있는 **짧은 1~2페이지 분량의 사용설명서** 텍스트와, 이를 디자인하기 위한 **ChatGPT Image 2.0 (DALL-E 3) 생성용 프롬프트**를 포함하고 있습니다.
+이 문서는 발표 및 배포용으로 사용할 수 있는 **짧은 1~2페이지 분량의 사용설명서**를 생성하기 위한 **ChatGPT Image 2.0 완제품 생성용 프롬프트**입니다. 한글 텍스트 렌더링을 완벽하게 지원하므로, 프롬프트를 그대로 복사해 넣으면 디자인과 한글 내용이 모두 포함된 완성된 이미지가 출력됩니다.
 
 ---
 
 ## 📄 [Page 1] 일반 사용자용: 내 곁의 확실한 응급실 찾기
 
-### 텍스트 내용 (디자인에 들어갈 문구)
-**[타이틀]**
-긴급할 때, 바로 찾는 가장 가까운 응급실 **"바로응급실(BaroER)"**
-
-**[Step 1] 앱 접속 및 증상 입력**
-- 앱 설치 없이 브라우저로 바로 접속!
-- "가슴이 아파요", "숨쉬기 힘들어요" — 다급할 땐 **음성(마이크)**으로 증상을 말하세요.
-- AI가 환자의 증상을 분석하여 응급도(KTAS)를 자동 판정합니다.
-
-**[Step 2] 내 주변 응급실 한눈에 보기**
-- 내 위치를 기반으로 수용 가능한 응급실이 지도에 표시됩니다.
-- 🟢 수용 가능 / 🟠 혼잡 / 🔴 수용 불가 상태를 직관적인 색상 마커로 확인하세요.
-
-**[Step 3] 원클릭 길안내**
-- 병원을 선택하면 1초 만에 **카카오내비, T맵** 등 내 스마트폰에 설치된 내비게이션으로 바로 연결됩니다!
-
----
-
-### 🎨 ChatGPT Image 2.0 (DALL-E 3) 프롬프트 (Page 1 디자인 생성용)
-> **Prompt:** Create a visually stunning, modern, and clean 1-page user manual infographic for a mobile app named 'BaroER' (바로응급실). The target audience is general users. The design should have a clear step-by-step layout (Step 1 to 3). Use a color palette of clean medical blue, white, and vibrant green for 'available' status. Include minimalist 3D isometric illustrations showing: a person speaking into a smartphone, a map with glowing green markers, and a car driving towards a hospital on a digital map. The layout must be highly professional, readable, with placeholder text blocks where actual instructions can be overlaid. No messy text, just aesthetic UI/UX infographic design.
+### 🎨 ChatGPT Image 2.0 프롬프트 (그대로 복사해서 사용하세요)
+> **Prompt:** Create a visually stunning, modern, and clean 1-page user manual infographic for a medical mobile app. The infographic must beautifully and flawlessly render the following exact Korean text in a highly readable and organized layout:
+> 
+> Main Title (Large, bold): "바로응급실 (BaroER)"
+> Subtitle: "긴급할 때, 바로 찾는 가장 가까운 응급실"
+> 
+> Section 1 (With an icon of voice input/smartphone):
+> "[앱 접속 및 증상 입력]"
+> "앱 설치 없이 브라우저로 바로 접속!"
+> "다급할 땐 음성으로 증상을 말하세요."
+> "AI가 증상을 분석해 응급도를 자동 판정합니다."
+> 
+> Section 2 (With an icon of a map and glowing markers):
+> "[내 주변 응급실 한눈에 보기]"
+> "수용 가능한 응급실이 지도에 바로 표시됩니다."
+> "초록, 주황, 빨강 색상으로 수용 상태를 직관적으로 확인하세요."
+> 
+> Section 3 (With an icon of navigation/car):
+> "[원클릭 길안내]"
+> "병원을 선택하면 내 스마트폰 내비게이션으로 1초 만에 바로 연결!"
+> 
+> Visual Style: Professional UI/UX infographic design. Clean medical blue, crisp white, and vibrant green. Minimalist 3D isometric elements. No typos in the Korean text, typography must be elegant and perfectly aligned.
 
 ---
 ---
 
 ## 📄 [Page 2] 구급대원용: 출동부터 인계까지, 완벽한 업무 지원
 
-### 텍스트 내용 (디자인에 들어갈 문구)
-**[타이틀]**
-구급대원의 골든타임 수호 파트너 **"바로응급실 PRO"**
-
-**[기능 1] 원터치 다중 병원 확인 (수용 문의)**
-- 일일이 전화할 필요 없습니다.
-- 환자 발생 시, 인근 병원 3~5곳에 시스템이 자동으로 수용 가능 여부를 동시 확인합니다.
-
-**[기능 2] 실시간 응급실 병상 정보 (공공데이터 연동)**
-- 구급차 이동 중에도 실시간으로 업데이트되는 권역/지역 응급의료센터의 병상 수를 리스트와 지도로 더블 체크하세요.
-
-**[기능 3] 자동 출동 로그 & 보고서**
-- 출동 시작부터 병원 인계 완료까지의 타임스탬프가 자동 기록됩니다.
-- 환자 인계 후, 터치 한 번으로 **PDF/Excel 출동 보고서**를 다운로드하여 보고 업무를 최소화하세요.
-
----
-
-### 🎨 ChatGPT Image 2.0 (DALL-E 3) 프롬프트 (Page 2 디자인 생성용)
-> **Prompt:** Create a sleek, high-tech 1-page user manual infographic for the professional paramedic version of a mobile app named 'BaroER'. The layout should look like a modern dashboard or a professional cheat sheet. The color palette should incorporate dark mode elements, deep navy blue, and urgent alert colors (amber, cyan). Include detailed minimalist 3D illustrations or UI mockups showing: a system sending automated signals to multiple hospital icons, a real-time data list of hospital beds, and a digital clipboard transforming into a neatly formatted PDF document. The overall vibe should be trustworthy, highly efficient, and modern. Keep text areas blank or use simple UI lines for layout purposes.
+### 🎨 ChatGPT Image 2.0 프롬프트 (그대로 복사해서 사용하세요)
+> **Prompt:** Create a sleek, high-tech, and professional 1-page user manual infographic for the paramedic version of a medical app. The infographic must beautifully and flawlessly render the following exact Korean text in a highly readable and organized layout:
+> 
+> Main Title (Large, bold): "바로응급실 PRO"
+> Subtitle: "구급대원의 골든타임 수호 파트너"
+> 
+> Section 1 (With an icon of automated network signals):
+> "[원터치 다중 병원 수용 확인]"
+> "일일이 전화할 필요 없습니다."
+> "인근 병원 3~5곳에 시스템이 자동으로 수용 여부를 동시 확인합니다."
+> 
+> Section 2 (With an icon of a dashboard/real-time data):
+> "[실시간 응급실 병상 정보]"
+> "구급차 이동 중에도 실시간 업데이트."
+> "권역/지역 응급의료센터 병상 수를 지도로 정확히 확인하세요."
+> 
+> Section 3 (With an icon of a digital PDF document/clipboard):
+> "[자동 출동 로그 & 보고서]"
+> "출동부터 인계까지 타임스탬프 자동 기록."
+> "터치 한 번으로 PDF 출동 보고서를 완성하세요."
+> 
+> Visual Style: Trustworthy, professional, and highly efficient. Modern dashboard aesthetic with dark mode elements, deep navy blue backgrounds, and bright accents (cyan, amber). Minimalist 3D tech icons. No typos in the Korean text, typography must be sharp and perfectly aligned.
 
 ---
 
 ## 💡 활용 방법
-1. 위 **ChatGPT Image 2.0 프롬프트**를 복사하여 ChatGPT (DALL-E 3)에 붙여넣기 하여 배경 및 레이아웃 이미지를 생성합니다.
-2. 생성된 이미지 위에 Canva, Figma, 또는 파워포인트를 활용하여 **텍스트 내용**을 한글로 덧입히면, 완성도 높은 전문가 수준의 1~2페이지 사용설명서 팜플렛이 완성됩니다.
+1. 위 **영문 프롬프트** 전체를 복사하여 ChatGPT(ChatGPT Image 2.0 활성화) 대화창에 그대로 붙여넣습니다.
+2. ChatGPT가 한글 내용이 모두 깔끔하게 삽입된 고품질의 완성형 인포그래픽(1장짜리 설명서)을 즉시 생성해 줍니다.
+3. 생성된 이미지를 바로 저장하여 발표 자료나 배포용 팜플렛으로 사용하시면 됩니다.
