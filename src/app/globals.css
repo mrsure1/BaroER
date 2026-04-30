@@ -241,8 +241,8 @@ option {
     0 5px 0 0 #8b9099;
   transition: box-shadow 100ms ease-out, transform 100ms ease-out;
 }
-.group:hover > .btn-119,
-.btn-119:hover {
+.group:hover > .btn-119:not(.home-cta-teal-tile):not(.home-cta-red-tile),
+.btn-119:not(.home-cta-teal-tile):not(.home-cta-red-tile):hover {
   box-shadow:
     inset 0 1.5px 0 rgba(255, 255, 255, 1),
     inset 0 -1px 0 rgba(0, 0, 0, 0.06),
@@ -252,12 +252,159 @@ option {
     0 4px 0 0 #aeb4bf,
     0 5px 0 0 #9ea4b0;
 }
-.group:active > .btn-119,
-.btn-119:active {
+.group:active > .btn-119:not(.home-cta-teal-tile):not(.home-cta-red-tile),
+.btn-119:not(.home-cta-teal-tile):not(.home-cta-red-tile):active {
   /* 5층 측면 그림자 모두 사라지고 inset 이 "눌린 안쪽 음영" 으로 전환 */
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.45),
     inset 0 2px 3px rgba(0, 0, 0, 0.12);
+}
+
+/* 홈 하단 2열(응급조치·119 / 리포트·119) — 기본은 청록(teal-400 등)·호버는 밝은 계열(teal-200/100) */
+.btn-119.home-cta-teal-tile,
+.btn-119.home-cta-red-tile {
+  border: 4px solid rgb(45 212 191); /* teal-400 — 기본선 한 단계 더 진함 */
+  box-shadow:
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.06),
+    0 1px 0 0 #d1d5db,
+    0 2px 0 0 #c4c4cc,
+    0 3px 0 0 #b0b4bc,
+    0 4px 0 0 #9ca3af,
+    0 5px 0 0 #8b9099;
+  transition:
+    transform 200ms ease-out,
+    border-color 200ms ease-out,
+    box-shadow 200ms ease-out;
+}
+
+.dark .btn-119.home-cta-teal-tile,
+.dark .btn-119.home-cta-red-tile {
+  border-color: rgb(20 184 166); /* teal-500 — 다크 기본 더 진하게 */
+  box-shadow:
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.24),
+    0 1px 0 0 #4b5970,
+    0 2px 0 0 #445569,
+    0 3px 0 0 #3f5062,
+    0 4px 0 0 #3a4c5e,
+    0 5px 0 0 #364658;
+  transition:
+    transform 200ms ease-out,
+    border-color 200ms ease-out,
+    box-shadow 200ms ease-out;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   히어로 "시작하기" — 앰버 테두리: 꺼짐(완전 투명) ↔ 켜짐(네온) 반복
+   ───────────────────────────────────────────────────────────────── */
+@keyframes hero-start-cta-pulse {
+  /* 오래 꺼짐 — 보더·외곽 글로우 완전 없음 */
+  0%,
+  38% {
+    border-color: transparent;
+    box-shadow: none;
+  }
+  /* 켜짐 피크 */
+  48%,
+  58% {
+    border-color: rgb(253 224 71);
+    box-shadow:
+      inset 0 0 0 1px rgb(253 230 138 / 0.45),
+      0 0 0 2px rgb(251 146 60 / 0.55),
+      0 0 0 5px rgb(252 211 77 / 0.35),
+      0 6px 26px rgb(251 146 60 / 0.38),
+      0 0 36px rgb(253 224 71 / 0.42),
+      0 0 48px rgb(250 204 21 / 0.22);
+  }
+  /* 다시 완전 꺼짐 */
+  70%,
+  100% {
+    border-color: transparent;
+    box-shadow: none;
+  }
+}
+.hero-start-cta {
+  border-width: 3px;
+  border-style: solid;
+  /* 꺼짐 구간이 길게 보이도록 주기 증가 */
+  animation: hero-start-cta-pulse 3.2s ease-in-out infinite;
+}
+.hero-start-cta:hover {
+  animation-play-state: paused;
+  border-color: rgb(254 249 195);
+  box-shadow:
+    inset 0 0 0 1px rgb(253 230 138 / 0.48),
+    0 0 0 4px rgb(252 211 77 / 0.65),
+    0 8px 26px rgb(251 146 60 / 0.32),
+    0 0 24px rgb(253 224 71 / 0.28);
+}
+
+/* 호버 · 밝은 청록(teal-200)·기본(teal-400)보다 환하게 살린 피드백 */
+.group:hover > .btn-119.home-cta-teal-tile,
+.btn-119.home-cta-teal-tile:hover,
+.group:hover > .btn-119.home-cta-red-tile,
+.btn-119.home-cta-red-tile:hover {
+  transform: translateY(-3px);
+  border-color: rgb(153 246 228); /* teal-200 */
+  box-shadow:
+    inset 0 1.5px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.06),
+    0 1px 0 0 #d8dce3,
+    0 2px 0 0 #cbd0d8,
+    0 3px 0 0 #bcc2cc,
+    0 4px 0 0 #aeb4bf,
+    0 5px 0 0 #9ea4b0;
+}
+
+.group:active > .btn-119.home-cta-teal-tile,
+.btn-119.home-cta-teal-tile:active,
+.group:active > .btn-119.home-cta-red-tile,
+.btn-119.home-cta-red-tile:active {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 2px 3px rgba(0, 0, 0, 0.12);
+}
+.dark .group:hover > .btn-119.home-cta-teal-tile,
+.dark .btn-119.home-cta-teal-tile:hover,
+.dark .group:hover > .btn-119.home-cta-red-tile,
+.dark .btn-119.home-cta-red-tile:hover {
+  border-color: rgb(204 251 241); /* teal-100 — 다크 배경 위 밝게 */
+  box-shadow:
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.09),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.28),
+    0 1px 0 0 #526278,
+    0 2px 0 0 #4a6274,
+    0 3px 0 0 #41596a,
+    0 4px 0 0 #3a5262,
+    0 5px 0 0 #334958;
+}
+
+/* 좌측 구급 리포트 플랫 카드 — 하단 블록과 동일 청록 굵은 보더 */
+.home-grid-teal-flat {
+  border: 4px solid rgb(45 212 191);
+  transition:
+    transform 200ms ease-out,
+    border-color 200ms ease-out,
+    box-shadow 200ms ease-out;
+  box-shadow: var(--shadow-sm);
+}
+
+.dark .home-grid-teal-flat {
+  border-color: rgb(20 184 166);
+  box-shadow: var(--shadow-md);
+}
+
+.home-grid-teal-flat:hover {
+  transform: translateY(-3px);
+  border-color: rgb(153 246 228);
+  box-shadow: var(--shadow-md);
+}
+
+.dark .home-grid-teal-flat:hover {
+  border-color: rgb(204 251 241);
+  box-shadow: var(--shadow-lg);
 }
 
 /* Focus ring — 응급 레드 기반 */

@@ -90,7 +90,7 @@ function Header() {
 /**
  * 사용자별 컨텍스트 카드 + 119 콜.
  * 좌측: 구급대원은 새 리포트 작성 / 일반 사용자는 증상별 응급조치요령(검색 연동).
- * 우측 119 긴급 전화 카드를 6:4 비율로 배치.
+ * 우측 119 긴급 전화. 하단 2열 카드 굵은 보더는 밝은 청록(teal) 톤으로 통일(CSS).
  */
 function ContextCard({ isParamedic }: { isParamedic: boolean }) {
   return (
@@ -145,12 +145,8 @@ function Emergency119Button() {
     >
       <div
         className={cn(
-          "btn-119",
+          "btn-119 home-cta-red-tile",
           "relative flex h-full min-h-0 flex-col justify-between overflow-hidden rounded-[var(--radius-md)]",
-          /* 긴급 카드 분리용 — 상태 레드 고채도 외곽선 */
-          "border-[3px] border-status-full shadow-[0_0_14px_-2px_rgb(239_68_68/0.85)] ring-2 ring-status-full/35 dark:border-red-400 dark:shadow-[0_0_16px_-2px_rgb(248_113_113/0.6)] dark:ring-red-400/40",
-          // 119 PNG 자체가 흰 배경 + 빨간 글자라, 카드 내부도 흰색으로
-          // 통일해 로고가 자연스럽게 녹아들게 한다. 입체감은 하단의 5층
           // 솔리드 측면 베벨 + inset 음영 (.btn-119 클래스) 이 담당.
           "bg-white",
           "p-2.5",
@@ -189,12 +185,18 @@ function Emergency119Button() {
 function ParamedicContext() {
   return (
     <Link href="/dispatch/new" className="block h-full min-h-0">
-      <Card className="flex h-full min-h-0 items-center gap-2.5 border-[3px] border-accent p-2.5 shadow-[0_0_14px_-3px_rgb(13_148_136/0.55)] ring-2 ring-accent/20 transition-all hover:-translate-y-0.5 hover:border-accent hover:shadow-[0_10px_28px_-10px_rgb(16_18_24/0.14),0_0_22px_-5px_rgb(13_148_136/0.5)] sm:p-3 dark:border-teal-400 dark:shadow-[0_0_16px_-2px_rgb(45_212_191/0.4)] dark:ring-teal-400/30 dark:hover:border-teal-300">
+      <Card
+        className={cn(
+          "flex h-full min-h-0 items-center gap-2.5 p-2.5 sm:p-3",
+          "border-0", /* 플랫 카드 — 청록 보더는 .home-grid-teal-flat */
+          "home-grid-teal-flat",
+        )}
+      >
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-fg shadow-[var(--shadow-sm)]">
           <FilePlus2 className="size-[18px]" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[10.5px] font-semibold uppercase tracking-wider text-primary">
+          <p className="text-[10.5px] font-semibold uppercase tracking-wider text-accent">
             구급대원
           </p>
           <p className="mt-0.5 truncate text-[14px] font-bold text-text">

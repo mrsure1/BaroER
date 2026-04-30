@@ -145,7 +145,7 @@ export function FirstAidContextVariantC() {
   );
 }
 
-/** 시안 D — 긴급 119 카드와 동일한 3D 푸시 박스(.btn-119) + primary 테두리 */
+/** 시안 D — 119와 같은 3D 푸시(.btn-119)·하단 카드 공통 밝은 청록 굵은 보더(.home-cta-teal-tile) */
 export function FirstAidContextVariantD() {
   return (
     <motion.div
@@ -164,18 +164,16 @@ export function FirstAidContextVariantD() {
       >
         <div
           className={cn(
-            "btn-119",
+            "btn-119 home-cta-teal-tile",
             "relative flex h-full min-h-0 flex-col justify-between gap-1.5 overflow-hidden rounded-[var(--radius-md)]",
-            /* 본문/일반 카드 구분 — 의료용 악센트 틸로 굵은 외곽선 */
-            "border-[3px] border-accent shadow-[0_0_14px_-3px_rgb(13_148_136/0.65)] ring-2 ring-accent/25 dark:border-teal-400 dark:shadow-[0_0_16px_-2px_rgb(45_212_191/0.45)] dark:ring-teal-400/35",
             "bg-white",
             "p-2.5 sm:p-3",
           )}
         >
           <div className="flex items-start gap-2">
-            <Cross className="size-7 shrink-0 text-primary" strokeWidth={2.5} />
+            <Cross className="size-7 shrink-0 text-status-full" strokeWidth={2.5} />
             <div className="min-w-0 flex-1">
-              <p className="text-[10.5px] font-semibold uppercase tracking-wider text-primary">
+              <p className="text-[10.5px] font-semibold uppercase tracking-wider text-status-full">
                 증상별 응급조치요령
               </p>
               <p className="mt-0.5 text-[13.5px] font-bold leading-snug text-text">
@@ -187,7 +185,7 @@ export function FirstAidContextVariantD() {
                 음성·메모로 상황을 남길 수 있어요.
               </p>
             </div>
-            <ChevronRight className="mt-0.5 size-4 shrink-0 text-primary" />
+            <ChevronRight className="mt-0.5 size-4 shrink-0 text-text-subtle" />
           </div>
         </div>
       </Link>
