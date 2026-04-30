@@ -69,7 +69,7 @@ const DOCS: Record<Locale, Doc> = {
         title: "5. 이용자의 권리",
         body: [
           "이용자는 언제든지 본인의 개인정보에 대해 열람, 정정, 삭제, 처리 정지를 요청할 수 있습니다. 서비스는 요청 접수 후 지체 없이 필요한 조치를 취합니다.",
-          "요청 방법: 앱 내 ‘도움말 → 문의하기’ 또는 support@baroer.app 로 이메일.",
+          "요청 방법: 앱 내 ‘도움말 → 문의하기’ 또는 leeyob@gmail.com 로 이메일.",
         ],
       },
       {
@@ -101,11 +101,11 @@ const DOCS: Record<Locale, Doc> = {
       {
         title: "10. 데이터 삭제 요청",
         body: [
-          "계정과 관련된 모든 개인정보의 즉시 삭제를 원하시면 support@baroer.app 으로 가입 이메일과 함께 요청해 주세요. 요청 접수 후 영업일 기준 3 일 이내에 처리합니다.",
+          "계정과 관련된 모든 개인정보의 즉시 삭제를 원하시면 leeyob@gmail.com 으로 가입 이메일과 함께 요청해 주세요. 요청 접수 후 영업일 기준 3 일 이내에 처리합니다.",
         ],
       },
     ],
-    closing: "책임자: BaroER 팀 · 문의: support@baroer.app",
+    closing: "책임자: BaroER 팀 · 문의: leeyob@gmail.com",
   },
   en: {
     heading: "Privacy Policy",
@@ -149,7 +149,7 @@ const DOCS: Record<Locale, Doc> = {
         title: "5. Your rights",
         body: [
           "You can request access, correction, deletion, or processing restriction at any time. Requests are actioned without undue delay.",
-          "Contact: in-app Help → Contact, or email support@baroer.app.",
+          "Contact: in-app Help → Contact, or email leeyob@gmail.com.",
         ],
       },
       {
@@ -179,11 +179,11 @@ const DOCS: Record<Locale, Doc> = {
       {
         title: "10. Data deletion requests",
         body: [
-          "Email support@baroer.app from your signup address to request full deletion. Requests are processed within 3 business days.",
+          "Email leeyob@gmail.com from your signup address to request full deletion. Requests are processed within 3 business days.",
         ],
       },
     ],
-    closing: "Controller: BaroER Team · Contact: support@baroer.app",
+    closing: "Controller: BaroER Team · Contact: leeyob@gmail.com",
   },
   ja: {
     heading: "個人情報処理方針",
@@ -227,7 +227,7 @@ const DOCS: Record<Locale, Doc> = {
         title: "5. 利用者の権利",
         body: [
           "いつでも個人情報の開示・訂正・削除・処理停止を請求できます。受領後、遅滞なく対応します。",
-          "請求方法: アプリ内ヘルプ → お問い合わせ、または support@baroer.app まで。",
+          "請求方法: アプリ内ヘルプ → お問い合わせ、または leeyob@gmail.com まで。",
         ],
       },
       {
@@ -257,11 +257,11 @@ const DOCS: Record<Locale, Doc> = {
       {
         title: "10. データ削除リクエスト",
         body: [
-          "アカウントに関連する個人情報の即時削除を希望する場合、登録メールから support@baroer.app までご請求ください。受付後 3 営業日以内に処理します。",
+          "アカウントに関連する個人情報の即時削除を希望する場合、登録メールから leeyob@gmail.com までご請求ください。受付後 3 営業日以内に処理します。",
         ],
       },
     ],
-    closing: "管理者: BaroER チーム · お問い合わせ: support@baroer.app",
+    closing: "管理者: BaroER チーム · お問い合わせ: leeyob@gmail.com",
   },
   zh: {
     heading: "隐私政策",
@@ -305,7 +305,7 @@ const DOCS: Record<Locale, Doc> = {
         title: "5. 用户权利",
         body: [
           "您可随时请求查阅、更正、删除或限制处理本人信息。我们将在收到请求后及时处理。",
-          "请求方式:应用内「帮助 → 联系我们」,或发送邮件至 support@baroer.app。",
+          "请求方式:应用内「帮助 → 联系我们」,或发送邮件至 leeyob@gmail.com。",
         ],
       },
       {
@@ -335,11 +335,11 @@ const DOCS: Record<Locale, Doc> = {
       {
         title: "10. 数据删除请求",
         body: [
-          "如需立即删除账户相关的全部个人信息,请从注册邮箱向 support@baroer.app 发送请求。我们将在 3 个工作日内处理。",
+          "如需立即删除账户相关的全部个人信息,请从注册邮箱向 leeyob@gmail.com 发送请求。我们将在 3 个工作日内处理。",
         ],
       },
     ],
-    closing: "负责人: BaroER 团队 · 联系方式: support@baroer.app",
+    closing: "负责人: BaroER 团队 · 联系方式: leeyob@gmail.com",
   },
 };
 

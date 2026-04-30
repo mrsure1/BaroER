@@ -214,7 +214,7 @@ const QUICK_ACTION_LABELS: Record<Locale, QuickActionLabels> = {
     },
     contact: {
       title: "문의하기",
-      desc: "support@baroer.app 로 메일 작성",
+      desc: "leeyob@gmail.com 로 메일 작성",
     },
     home: {
       title: "홈으로 이동",
@@ -233,7 +233,7 @@ const QUICK_ACTION_LABELS: Record<Locale, QuickActionLabels> = {
     },
     contact: {
       title: "Contact us",
-      desc: "Compose an email to support@baroer.app",
+      desc: "Compose an email to leeyob@gmail.com",
     },
     home: {
       title: "Back to home",
@@ -252,7 +252,7 @@ const QUICK_ACTION_LABELS: Record<Locale, QuickActionLabels> = {
     },
     contact: {
       title: "お問い合わせ",
-      desc: "support@baroer.app 宛にメール作成",
+      desc: "leeyob@gmail.com 宛にメール作成",
     },
     home: {
       title: "ホームへ戻る",
@@ -271,7 +271,7 @@ const QUICK_ACTION_LABELS: Record<Locale, QuickActionLabels> = {
     },
     contact: {
       title: "联系我们",
-      desc: "发送邮件至 support@baroer.app",
+      desc: "发送邮件至 leeyob@gmail.com",
     },
     home: {
       title: "返回主页",
@@ -516,7 +516,7 @@ export default function HelpPage() {
       desc: qa.contact.desc,
       Icon: Mail,
       tone: "amber",
-      href: "mailto:support@baroer.app?subject=%5BBaroER%5D%20%EB%AC%B8%EC%9D%98",
+      href: "mailto:leeyob@gmail.com?subject=%5BBaroER%5D%20%EB%AC%B8%EC%9D%98",
     },
     {
       title: qa.home.title,
@@ -712,12 +712,12 @@ export default function HelpPage() {
 
         <p className="mt-8 text-center text-[11.5px] text-text-subtle">
           {locale === "ko"
-            ? "추가 문의: support@baroer.app"
+            ? "추가 문의: leeyob@gmail.com"
             : locale === "en"
-              ? "More questions? support@baroer.app"
+              ? "More questions? leeyob@gmail.com"
               : locale === "ja"
-                ? "その他のお問い合わせ: support@baroer.app"
-                : "更多咨询: support@baroer.app"}
+                ? "その他のお問い合わせ: leeyob@gmail.com"
+                : "更多咨询: leeyob@gmail.com"}
         </p>
       </div>
     </>

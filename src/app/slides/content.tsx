@@ -1187,10 +1187,10 @@ const SLIDE_18_CLOSE: SlideDef = {
 
         <div className="flex flex-wrap items-center gap-3">
           <a
-            href="mailto:support@baroer.app"
+            href="mailto:leeyob@gmail.com"
             className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-[14px] font-semibold text-primary-fg shadow-[var(--shadow-md)] hover:bg-primary-hover"
           >
-            <MessageCircleHeart className="size-4" /> support@baroer.app
+            <MessageCircleHeart className="size-4" /> leeyob@gmail.com
           </a>
           <a
             href="/home"

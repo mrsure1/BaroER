@@ -1253,7 +1253,7 @@ def slide_18_close(prs, total):
     add_rect(slide, Inches(0.6), Inches(6.5), Inches(12.2), Inches(0.55),
              fill=SURFACE, line=BORDER, corner=0.3)
     add_text(slide, Inches(0.9), Inches(6.5), Inches(12), Inches(0.55),
-             "✉  support@baroer.app     ·     팀 바로응급실     ·     2026",
+             "✉  leeyob@gmail.com     ·     팀 바로응급실     ·     2026",
              size=13, bold=True, color=TEXT, anchor=MSO_ANCHOR.MIDDLE)
 
 

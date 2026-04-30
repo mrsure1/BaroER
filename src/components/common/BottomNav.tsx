@@ -45,7 +45,13 @@ export function BottomNav() {
     >
       <ul className="mx-auto flex max-w-[520px] items-stretch justify-around pb-[env(safe-area-inset-bottom)]">
         {items.map(({ href, label, Icon }) => {
-          const active = pathname === href || pathname.startsWith(`${href}/`);
+          const settingsCluster =
+            href === "/settings" &&
+            (pathname === "/help" || pathname.startsWith("/legal"));
+          const active =
+            pathname === href ||
+            pathname.startsWith(`${href}/`) ||
+            settingsCluster;
           return (
             <li key={href} className="flex-1">
               <Link

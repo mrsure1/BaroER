@@ -1,22 +1,26 @@
 "use client";
 
 import {
-  Activity,
+  AlertTriangle,
   Ambulance,
   Bell,
+  ChevronLeft,
   ClipboardList,
   Compass,
   FilePlus2,
   Globe,
+  Home,
   Hospital,
+  Info,
   Map as MapIcon,
+  MicOff,
   Navigation,
   Palette,
   Phone,
+  RotateCcw,
   Search,
   Settings as SettingsIcon,
-  Siren,
-  Sparkles,
+  Stethoscope,
   UserCircle,
   Users,
 } from "lucide-react";
@@ -89,7 +93,7 @@ function MiniBottomNav({
   active: "home" | "search" | "dispatch" | "settings" | "none";
 }) {
   const items = [
-    { id: "home", label: "홈", Icon: Hospital },
+    { id: "home", label: "홈", Icon: Home },
     { id: "search", label: "검색", Icon: MapIcon },
     { id: "dispatch", label: "기록", Icon: ClipboardList },
     { id: "settings", label: "설정", Icon: SettingsIcon },
@@ -250,113 +254,134 @@ export function MockupHome() {
 }
 
 /* ---------------------------------------------------------------------- */
-/* 2. 환자 상태 평가 · KTAS · 응급처치                                      */
+/* 2. 환자 상태 평가 (검색 탭 실제 레이아웃에 가깝게)                          */
 /* ---------------------------------------------------------------------- */
 
 export function MockupAssessment() {
-  const ktas = [
-    { n: "1", color: "bg-[#0067B3]", label: "소생" },
-    { n: "2", color: "bg-[#E53935]", label: "긴급" },
-    { n: "3", color: "bg-[#F59E0B]", label: "응급" },
-    { n: "4", color: "bg-[#22C55E]", label: "준응급" },
-    { n: "5", color: "bg-[#A1A1AA]", label: "비응급" },
+  const symptoms = [
+    [
+      { label: "알레르기\n반응", selected: false, urgent: false },
+      { label: "화상", selected: false, urgent: false },
+      { label: "두통", selected: false, urgent: false },
+    ],
+    [
+      { label: "출혈", selected: true, urgent: false },
+      { label: "의식\n없음", selected: false, urgent: true },
+      { label: "호흡\n곤란", selected: false, urgent: true },
+    ],
+    [
+      { label: "골절", selected: true, urgent: false },
+      { label: "심한\n통증", selected: true, urgent: false },
+      { label: "발작", selected: false, urgent: true },
+    ],
   ];
   return (
     <PhoneFrame activeTab="search">
-      <ScreenBar title="검색" />
-      <div className="flex-1 overflow-hidden px-3 pb-1 pt-2">
-        {/* KTAS 안내 */}
-        <div className="rounded-[10px] border border-border bg-surface p-1.5">
-          <div className="mb-1 flex items-center gap-1">
-            <Activity className="size-2.5 text-accent" />
-            <p className="text-[7px] font-semibold uppercase tracking-wider text-accent">
-              KTAS 참고 등급
+      {/* 상단 헤더 — 뒤로 · 제목/부제 · 초기화 */}
+      <div className="shrink-0 border-b border-border/60 px-2 py-1">
+        <div className="flex items-start gap-0.5">
+          <ChevronLeft
+            className="mt-[1px] size-3 shrink-0 text-text-muted"
+            strokeWidth={2.2}
+          />
+          <div className="min-w-0 flex-1">
+            <p className="text-[8.5px] font-bold leading-tight text-text">
+              환자 상태 평가
+            </p>
+            <p className="mt-0.5 text-[6.5px] leading-snug text-text-muted">
+              증상을 선택하면 KTAS 중증도가 즉시 계산…
             </p>
           </div>
-          <div className="flex items-stretch gap-0.5">
-            {ktas.map((k) => (
-              <div
-                key={k.n}
-                className="flex flex-1 flex-col items-center gap-0.5"
-              >
-                <span
-                  className={cn(
-                    "grid size-4 place-items-center rounded text-[8px] font-bold text-white",
-                    k.color,
-                  )}
-                >
-                  {k.n}
-                </span>
-                <span className="text-[6.5px] text-text-muted">{k.label}</span>
-              </div>
-            ))}
+          <div className="flex shrink-0 items-center gap-0.5 rounded-md px-0.5 text-[6.5px] font-semibold text-primary">
+            <RotateCcw className="size-2.5" strokeWidth={2.2} />
+            초기화
           </div>
         </div>
+      </div>
 
-        {/* 성별 · 연령 */}
-        <div className="mt-2 grid grid-cols-2 gap-1.5">
-          <div className="rounded-[8px] border border-border bg-surface p-1.5">
-            <p className="text-[7px] font-semibold text-text-muted">성별</p>
-            <div className="mt-0.5 flex gap-0.5">
-              <span className="flex-1 rounded bg-primary px-1 py-0.5 text-center text-[7px] font-semibold text-white">
-                남
-              </span>
-              <span className="flex-1 rounded border border-border px-1 py-0.5 text-center text-[7px] text-text-muted">
-                여
-              </span>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-2 pb-1 pt-1">
+        {/* 주 증상 */}
+        <div className="flex items-center justify-between gap-1">
+          <div className="flex items-center gap-0.5">
+            <Stethoscope className="size-2.5 text-accent" strokeWidth={2.2} />
+            <span className="text-[7px] font-bold text-text">주 증상</span>
+          </div>
+          <span className="text-[6px] text-text-subtle">복수 선택 가능</span>
+        </div>
+        <div className="mt-0.5 grid grid-cols-3 gap-[3px]">
+          {symptoms.flatMap((row) =>
+            row.map((s) => (
+              <div
+                key={s.label}
+                className={cn(
+                  "relative flex min-h-[26px] items-center justify-center rounded-[7px] border px-0.5 text-center",
+                  s.selected
+                    ? "border-status-full bg-status-full-soft/90 text-status-full shadow-sm"
+                    : "border-border/90 bg-surface text-text-muted",
+                )}
+              >
+                {s.urgent && (
+                  <span className="absolute right-1 top-1 size-1 rounded-full bg-status-full ring-[0.5px] ring-bg" />
+                )}
+                <span className="whitespace-pre-line text-[6px] font-semibold leading-[1.12]">
+                  {s.label}
+                </span>
+              </div>
+            )),
+          )}
+        </div>
+
+        {/* 추가 메모 */}
+        <div className="mt-1 flex items-center justify-between">
+          <div className="flex items-center gap-0.5">
+            <Info className="size-2.5 text-text-muted" />
+            <span className="text-[7px] font-bold text-text">추가 메모</span>
+          </div>
+          <span className="text-[6px] text-text-subtle">선택 · 특이사항</span>
+        </div>
+        <div className="relative mt-0.5 rounded-[8px] border border-border bg-surface px-2 py-1.5 pr-7">
+          <p className="text-[6.5px] leading-snug text-text">체온 39도</p>
+          <span className="absolute bottom-1 right-1 grid size-5 place-items-center rounded-full bg-primary text-primary-fg shadow-md">
+            <MicOff className="size-2.5" strokeWidth={2.2} />
+          </span>
+        </div>
+        <p className="mt-0.5 text-[5.5px] leading-tight text-text-subtle">
+          듣고 있어요… 길게 말해도 끊기지 않아요. 다시 누르면 멈춰요.
+        </p>
+
+        {/* 환자 정보 */}
+        <div className="mt-1 flex items-center gap-0.5">
+          <Users className="size-2.5 text-text-muted" />
+          <span className="text-[7px] font-bold text-text">환자 정보</span>
+        </div>
+        <div className="mt-0.5 flex items-center gap-1">
+          <span className="flex-1 rounded-lg border border-border bg-surface py-0.5 text-center text-[6.5px] font-medium text-text-muted">
+            남성
+          </span>
+          <span className="flex-1 rounded-lg border border-primary bg-primary-soft py-0.5 text-center text-[6.5px] font-bold text-primary">
+            여성
+          </span>
+          <span className="flex-[1.15] rounded-lg border border-dashed border-border bg-surface py-0.5 text-center text-[6.5px] text-text-subtle">
+            연령대 선택 ▾
+          </span>
+        </div>
+
+        {/* 위급 배너 + CTA */}
+        <div className="mt-auto space-y-0.5 pt-1">
+          <div className="flex items-center gap-1 rounded-[8px] bg-status-full px-1.5 py-1 shadow-sm">
+            <AlertTriangle className="size-3 shrink-0 text-white" />
+            <div className="min-w-0 leading-tight">
+              <p className="text-[7px] font-extrabold text-white">매우위급</p>
+              <p className="text-[6.5px] font-semibold text-white/90">
+                지금 당장 119
+              </p>
             </div>
           </div>
-          <div className="rounded-[8px] border border-border bg-surface p-1.5">
-            <p className="text-[7px] font-semibold text-text-muted">연령대</p>
-            <p className="mt-0.5 text-[8px] font-bold text-text">30–40대</p>
+          <div className="flex items-center justify-center gap-1 rounded-[9px] bg-primary py-1.5 text-[8px] font-extrabold text-white shadow-[0_3px_8px_-2px_rgb(229_57_53/0.45)]">
+            <Search className="size-3" strokeWidth={2.4} />
+            가까운 응급실 찾기
+            <span className="opacity-95">→</span>
           </div>
-        </div>
-
-        {/* 증상 선택 — 칩 */}
-        <p className="mt-2 text-[7px] font-semibold text-text-muted">
-          증상 선택
-          <span className="ml-1 text-status-full">*</span>
-        </p>
-        <div className="mt-0.5 flex flex-wrap gap-1">
-          {[
-            { l: "가슴통증", on: true },
-            { l: "호흡곤란", on: true },
-            { l: "의식저하", on: false },
-            { l: "복통", on: false },
-            { l: "출혈", on: false },
-            { l: "발열", on: false },
-          ].map((c) => (
-            <span
-              key={c.l}
-              className={cn(
-                "rounded-full border px-1.5 py-0.5 text-[7px] font-medium",
-                c.on
-                  ? "border-primary bg-primary text-white"
-                  : "border-border bg-surface text-text-muted",
-              )}
-            >
-              {c.l}
-            </span>
-          ))}
-        </div>
-
-        {/* 응급처치 요령 */}
-        <div className="mt-2 rounded-[10px] border border-status-full/30 bg-status-full-soft/60 p-1.5">
-          <div className="flex items-center gap-1">
-            <Siren className="size-2.5 text-status-full" />
-            <p className="text-[7px] font-bold text-status-full">
-              응급처치 요령
-            </p>
-          </div>
-          <ul className="mt-0.5 space-y-0.5 text-[7px] leading-snug text-status-full/90">
-            <li>• 편한 자세 · 호흡 안정</li>
-            <li>• 반응 없으면 119 즉시</li>
-          </ul>
-        </div>
-
-        {/* CTA */}
-        <div className="mt-2 rounded-full bg-primary py-1 text-center text-[9px] font-bold text-white shadow-[0_3px_8px_-2px_rgb(229_57_53/0.5)]">
-          근처 응급실 찾기
         </div>
       </div>
     </PhoneFrame>
