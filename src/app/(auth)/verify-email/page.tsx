@@ -1,21 +1,75 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { Mail, RotateCcw, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { resendVerificationEmail } from "@/services/auth";
+import { resendVerificationEmail, supabaseConfigured } from "@/services/auth";
+import { createClient } from "@/lib/supabase/client";
+import type { User } from "@supabase/supabase-js";
 
 function VerifyEmailContent() {
+  const router = useRouter();
   const params = useSearchParams();
   const email = params.get("email") ?? "";
+  const rawNext = params.get("next");
+  const loginHref =
+    rawNext?.startsWith("/") && !rawNext.startsWith("//")
+      ? `/login?next=${encodeURIComponent(rawNext)}`
+      : "/login";
+  const safeNext = useMemo(() => {
+    const n = rawNext ?? "/home";
+    return n.startsWith("/") && !n.startsWith("//") ? n : "/home";
+  }, [rawNext]);
+
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
     "idle",
   );
   const [errMsg, setErrMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!supabaseConfigured()) return;
+
+    const supabase = createClient();
+    let cancelled = false;
+
+    function shouldComplete(u: User | undefined) {
+      if (!u) return false;
+      return Boolean(u.email_confirmed_at);
+    }
+
+    async function checkAndLeave() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (cancelled || !session?.user || !shouldComplete(session.user)) return;
+      router.replace(safeNext);
+    }
+
+    void checkAndLeave();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (cancelled) return;
+      if (session?.user && shouldComplete(session.user)) {
+        router.replace(safeNext);
+      }
+    });
+
+    const iv = window.setInterval(() => {
+      void checkAndLeave();
+    }, 2000);
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+      window.clearInterval(iv);
+    };
+  }, [router, safeNext]);
 
   async function handleResend() {
     if (!email) {
@@ -26,7 +80,7 @@ function VerifyEmailContent() {
     setStatus("sending");
     setErrMsg(null);
     try {
-      await resendVerificationEmail(email);
+      await resendVerificationEmail(email, safeNext);
       setStatus("sent");
     } catch (e) {
       setStatus("error");
@@ -65,6 +119,9 @@ function VerifyEmailContent() {
           )}{" "}
           링크를 클릭하면 자동으로 로그인됩니다.
         </p>
+        <p className="mt-3 max-w-[340px] text-[13px] leading-relaxed text-text-subtle">
+          메일에서 인증 링크를 열면 새 탭이 생기는 경우가 많습니다. 이 안내 화면은 그대로 두셔도 되고, 인증이 같은 브라우저에서 완료되면 잠시 후 이 창에서 자동으로 다음 화면으로 이동합니다.
+        </p>
       </motion.div>
 
       <Card className="mt-10 p-4 text-[13px] leading-relaxed text-text-muted">
@@ -93,7 +150,7 @@ function VerifyEmailContent() {
       )}
 
       <Link
-        href="/login"
+        href={loginHref}
         className="mt-auto pt-10 text-center text-[13.5px] font-medium text-text-muted hover:text-text"
       >
         <span className="inline-flex items-center gap-1.5">

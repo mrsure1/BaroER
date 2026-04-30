@@ -14,6 +14,13 @@ const PUBLIC_PATHS = new Set<string>([
   "/verify-email",
   "/forgot-password",
 ]);
+
+/** 이미 세션이 있는 사용자는 이 경로에서는 머무를 이유가 없음 → 홈으로. */
+const REDIRECT_AUTHENTICATED_FROM_PATHS = new Set<string>([
+  "/login",
+  "/forgot-password",
+]);
+
 // /auth/callback, /legal/privacy 등 접근 제한이 필요 없는 prefix.
 // 법률·도움말은 비로그인 상태의 사용자도 열람 가능해야 함.
 const PUBLIC_PREFIXES = ["/auth/", "/legal/"];
@@ -45,7 +52,8 @@ function isPublic(pathname: string): boolean {
  * 모든 요청에서 Supabase 세션 토큰을 자동 갱신하고
  * 만료된 access token 을 silent 하게 새로 발급받는다.
  * 동시에 인증 가드도 수행: 세션이 없으면 보호 경로 → /login 리다이렉트,
- * 세션이 있으면 인증 페이지 → /home 리다이렉트.
+ * 세션이 있으면 /login · /forgot-password 만 /home 리다이렉트(`/register`,
+ * `/verify-email` 은 허용).
  *
  * @supabase/ssr 권장 패턴: middleware.ts 에서 매 요청마다 호출.
  */
@@ -97,9 +105,11 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // 2) 인증됨 + 인증 페이지(/login, /register, /verify-email) → /home
-  //    (단 /auth/callback 같은 OAuth 처리 라우트는 통과시켜야 함)
-  if (user && PUBLIC_PATHS.has(pathname)) {
+  // 2) 인증됨 + 「게스트 전용 인증 UI」만 /home 으로 보냄.
+  //    `/register`, `/verify-email` 은 제외함 — 회원가입 직후 Supabase 설정에 따라
+  //    즉시 세션이 생기면 미들웨어가 `/verify-email` 을 차단했고, 로그인 상태에서도
+  //    새 계정 가입 페이지를 열 수 있게 한다.
+  if (user && REDIRECT_AUTHENTICATED_FROM_PATHS.has(pathname)) {
     const homeUrl = request.nextUrl.clone();
     homeUrl.pathname = "/home";
     homeUrl.search = "";

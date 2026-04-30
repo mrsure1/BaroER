@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
 import { ArrowLeft, Building2, Lock, Mail, User, Check } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -39,7 +39,20 @@ const userTypes: Array<{
 ];
 
 export default function RegisterPage() {
+  return (
+    <Suspense fallback={null}>
+      <RegisterContent />
+    </Suspense>
+  );
+}
+
+function RegisterContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const rawNext = searchParams.get("next") ?? "/home";
+  const next =
+    rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/home";
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nickname, setNickname] = useState("");
@@ -68,8 +81,8 @@ export default function RegisterPage() {
     setError(null);
     setOauthLoading(provider);
     try {
-      if (provider === "google") await loginWithGoogle("/home");
-      else await loginWithKakao("/home");
+      if (provider === "google") await loginWithGoogle(next);
+      else await loginWithKakao(next);
       // 성공 시 OAuth provider 페이지로 리다이렉트되므로 이 라인은 도달하지 않는다.
     } catch (err) {
       setOauthLoading(null);
@@ -89,7 +102,9 @@ export default function RegisterPage() {
       const trimmedEmail = email.trim();
       if (!supabaseConfigured()) {
         await new Promise((r) => setTimeout(r, 500));
-        router.push(`/verify-email?email=${encodeURIComponent(trimmedEmail)}`);
+        router.push(
+          `/verify-email?email=${encodeURIComponent(trimmedEmail)}&next=${encodeURIComponent(next)}`,
+        );
         return;
       }
       await registerWithEmail({
@@ -98,9 +113,12 @@ export default function RegisterPage() {
         nickname: nickname.trim(),
         userType,
         orgCode: userType === "PARAMEDIC" ? orgCode.trim() : undefined,
+        redirectNext: next,
       });
       // Supabase 가 인증 메일을 보냈다 — 사용자에게 안내 페이지로 이동.
-      router.push(`/verify-email?email=${encodeURIComponent(trimmedEmail)}`);
+      router.push(
+        `/verify-email?email=${encodeURIComponent(trimmedEmail)}&next=${encodeURIComponent(next)}`,
+      );
     } catch (err) {
       const msg = err instanceof Error ? err.message.toLowerCase() : "";
       if (msg.includes("user already registered") || msg.includes("already")) {
@@ -339,7 +357,7 @@ export default function RegisterPage() {
       <p className="mt-8 text-center text-[13.5px] text-text-muted">
         이미 계정이 있으신가요?{" "}
         <Link
-          href="/login"
+          href={`/login?next=${encodeURIComponent(next)}`}
           className="font-semibold text-primary hover:text-primary-hover"
         >
           로그인

@@ -118,7 +118,11 @@ export function HeroVariantB_StepHere() {
           <Link
             href="/search"
             aria-label="응급실 검색 시작하기"
-            className="flex min-h-[88px] w-full shrink-0 items-center justify-center gap-2.5 rounded-2xl bg-black/25 px-3 py-5 text-[18px] font-extrabold text-white ring-2 ring-white/40 backdrop-blur-sm transition hover:bg-black/35 sm:min-h-[96px] sm:text-[19px]"
+            className={cn(
+              "flex min-h-[88px] w-full shrink-0 items-center justify-center gap-2.5 rounded-2xl bg-black/25 px-3 py-5 text-[18px] font-extrabold text-white backdrop-blur-sm transition hover:bg-black/35 sm:min-h-[96px] sm:text-[19px]",
+              /* 본문(흰 텍스트)과 구분: 앰버 테두리 + 외곽 글로우 */
+              "border-[3px] border-amber-300 shadow-[0_0_0_2px_rgb(251_146_60/0.55),inset_0_0_0_1px_rgb(251_191_36/0.35)] hover:border-amber-200",
+            )}
           >
             시작하기
             <ChevronRight className="size-5 shrink-0" strokeWidth={2.5} />

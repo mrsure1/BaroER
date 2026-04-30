@@ -1,0 +1,12 @@
+이메일 본문/제목이 Supabase 기본값이면 「바로응급실」 안내 없이 표시되는 경우가 있습니다.
+
+■ 클라우드(Supabase Dashboard)
+1) 프로젝트 → Authentication → Email Templates → "Confirm signup"
+2) Subject: confirm-signup-subject.txt 내용 전체 붙여넣기 (필요 시 문구 수정)
+3) Body: confirm-signup-body.html 에서 <!DOCTYPE 부터 파일 끝까지 붙여넣기
+4) 저장 전에 변수 {{ .ConfirmationURL }}, {{ .Email }} 가 그대로 있는지 확인 (삭제하면 링크가 동작하지 않음)
+5) Authentication → URL Configuration 에서 Site URL 과 Redirect URLs(개발 도메인 + /auth/callback 포함) 등록 확인
+
+■ 로컬(supabase start)에서 템플릿 파일을 바로 묶고 싶다면
+프로젝트 루트에 생성된 supabase/config.toml 의 [auth.email.template.confirmation] 에
+confirm-signup-body.html 경로를 지정하는 방식입니다. 초기 설정이 없다면 Dashboard 방식만 써도 됩니다.

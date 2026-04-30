@@ -245,7 +245,7 @@ function LoginContent() {
       >
         아직 계정이 없으신가요?{" "}
         <Link
-          href="/register"
+          href={`/register?next=${encodeURIComponent(next)}`}
           className="font-semibold text-primary hover:text-primary-hover"
         >
           회원가입

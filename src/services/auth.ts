@@ -15,6 +15,19 @@ export function supabaseConfigured(): boolean {
   );
 }
 
+function sanitizeRedirectNext(path: string | undefined, fallback = "/home") {
+  if (!path?.trim()) return fallback;
+  const p = path.trim();
+  if (!p.startsWith("/") || p.startsWith("//")) return fallback;
+  return p;
+}
+
+function authCallbackUrl(redirectNext?: string) {
+  const next = sanitizeRedirectNext(redirectNext);
+  if (typeof window === "undefined") return undefined;
+  return `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+}
+
 /** Supabase user → 앱 내부 AuthUser 매핑. user_metadata 우선, 없으면 폴백. */
 function toAuthUser(u: User): AuthUser {
   const md = (u.user_metadata ?? {}) as Record<string, unknown>;
@@ -62,6 +75,8 @@ interface RegisterArgs {
   nickname: string;
   userType: UserType;
   orgCode?: string;
+  /** 이메일 인증 완료 후 `/auth/callback` 에 전달할 내부 경로 */
+  redirectNext?: string;
 }
 
 /**
@@ -76,12 +91,10 @@ export async function registerWithEmail({
   nickname,
   userType,
   orgCode,
+  redirectNext,
 }: RegisterArgs) {
   const supabase = createClient();
-  const redirectTo =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/auth/callback?next=/home`
-      : undefined;
+  const redirectTo = authCallbackUrl(redirectNext);
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -131,12 +144,12 @@ export async function signOut() {
   await supabase.auth.signOut();
 }
 
-export async function resendVerificationEmail(email: string) {
+export async function resendVerificationEmail(
+  email: string,
+  redirectNext = "/home",
+) {
   const supabase = createClient();
-  const redirectTo =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/auth/callback?next=/home`
-      : undefined;
+  const redirectTo = authCallbackUrl(redirectNext);
   const { error } = await supabase.auth.resend({
     type: "signup",
     email,

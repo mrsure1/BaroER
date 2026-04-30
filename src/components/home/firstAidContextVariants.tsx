@@ -166,7 +166,8 @@ export function FirstAidContextVariantD() {
           className={cn(
             "btn-119",
             "relative flex h-full min-h-0 flex-col justify-between gap-1.5 overflow-hidden rounded-[var(--radius-md)]",
-            "border border-primary/35",
+            /* 본문/일반 카드 구분 — 의료용 악센트 틸로 굵은 외곽선 */
+            "border-[3px] border-accent shadow-[0_0_14px_-3px_rgb(13_148_136/0.65)] ring-2 ring-accent/25 dark:border-teal-400 dark:shadow-[0_0_16px_-2px_rgb(45_212_191/0.45)] dark:ring-teal-400/35",
             "bg-white",
             "p-2.5 sm:p-3",
           )}

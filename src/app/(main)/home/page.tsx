@@ -147,7 +147,8 @@ function Emergency119Button() {
         className={cn(
           "btn-119",
           "relative flex h-full min-h-0 flex-col justify-between overflow-hidden rounded-[var(--radius-md)]",
-          "border border-status-full/35",
+          /* 긴급 카드 분리용 — 상태 레드 고채도 외곽선 */
+          "border-[3px] border-status-full shadow-[0_0_14px_-2px_rgb(239_68_68/0.85)] ring-2 ring-status-full/35 dark:border-red-400 dark:shadow-[0_0_16px_-2px_rgb(248_113_113/0.6)] dark:ring-red-400/40",
           // 119 PNG 자체가 흰 배경 + 빨간 글자라, 카드 내부도 흰색으로
           // 통일해 로고가 자연스럽게 녹아들게 한다. 입체감은 하단의 5층
           // 솔리드 측면 베벨 + inset 음영 (.btn-119 클래스) 이 담당.
@@ -188,7 +189,7 @@ function Emergency119Button() {
 function ParamedicContext() {
   return (
     <Link href="/dispatch/new" className="block h-full min-h-0">
-      <Card className="flex h-full min-h-0 items-center gap-2.5 p-2.5 transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)] sm:p-3">
+      <Card className="flex h-full min-h-0 items-center gap-2.5 border-[3px] border-accent p-2.5 shadow-[0_0_14px_-3px_rgb(13_148_136/0.55)] ring-2 ring-accent/20 transition-all hover:-translate-y-0.5 hover:border-accent hover:shadow-[0_10px_28px_-10px_rgb(16_18_24/0.14),0_0_22px_-5px_rgb(13_148_136/0.5)] sm:p-3 dark:border-teal-400 dark:shadow-[0_0_16px_-2px_rgb(45_212_191/0.4)] dark:ring-teal-400/30 dark:hover:border-teal-300">
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-fg shadow-[var(--shadow-sm)]">
           <FilePlus2 className="size-[18px]" />
         </span>
