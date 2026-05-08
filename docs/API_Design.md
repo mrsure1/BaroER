@@ -15,8 +15,8 @@
 | Base URL (로컬) | `http://localhost:3000/api/v1` |
 | 프로토콜 | HTTPS (TLS 1.3) — Vercel 자동 적용 |
 | 구현 | **Next.js App Router API Routes** (`app/api/v1/**/route.ts`) |
-| 인증 방식 | Firebase ID Token (HTTP-only 쿠키) — 서버에서 Admin SDK 로 검증 |
-| 세션 갱신 | Firebase Auth 의 자동 토큰 갱신, 쿠키는 만료 시 재발급 |
+| 인증 방식 | Supabase JWT (HTTP-only 쿠키) — 서버에서 Supabase Client 로 검증 |
+| 세션 갱신 | Supabase Auth 의 자동 토큰 갱신, 쿠키는 만료 시 재발급 |
 | 응답 형식 | JSON |
 | 문자 인코딩 | UTF-8 |
 | API 버전 관리 | URL 경로 (`/api/v1/`, `/api/v2/`) |
@@ -50,12 +50,12 @@
 
 ## 2. 인증 API (Auth)
 
-> **웹앱 구현 메모** — 로그인/회원가입은 브라우저에서 Firebase Web SDK 로 직접 수행하고, ID Token 을 `/api/v1/auth/session` 에 POST 해 HTTP-only 쿠키로 교환합니다. 아래 엔드포인트 명세는 참고용이며, 실제 클라이언트가 먼저 Firebase 로 인증 후 서버 세션 쿠키를 발급받는 구조입니다.
+> **웹앱 구현 메모** — 로그인/회원가입은 브라우저에서 Supabase Web SDK 로 직접 수행하고, 생성된 세션을 HTTP-only 쿠키로 관리합니다. 아래 엔드포인트 명세는 참고용이며, 실제 클라이언트는 Supabase Auth 를 통해 인증 및 세션 쿠키를 발급받는 구조입니다.
 >
 > ```
-> [브라우저] Firebase Web SDK → ID Token
+> [브라우저] Supabase Web SDK → JWT Session
 >      └→ POST /api/v1/auth/session  (ID Token)
->         └→ [서버] Firebase Admin 으로 검증 → Set-Cookie (HTTP-only)
+>         └→ [서버] Supabase Client 로 검증 → Set-Cookie (HTTP-only)
 > ```
 
 ### 2.1 회원가입
@@ -537,8 +537,8 @@
 
 | 정책 | 내용 |
 |------|------|
-| 인증 | Firebase ID Token (HTTP-only, Secure, SameSite=Lax 쿠키) |
-| 세션 갱신 | Firebase Auth 자동 갱신 + 쿠키 재발급 |
+| 인증 | Supabase JWT (HTTP-only, Secure, SameSite=Lax 쿠키) |
+| 세션 갱신 | Supabase Auth 자동 갱신 + 쿠키 재발급 |
 | Rate Limiting | 분당 60회 (인증 API: 분당 10회) — Vercel Edge Middleware 또는 Upstash Rate Limit |
 | CORS | **허용 도메인 화이트리스트**: `https://baroer.vercel.app`, `https://baroer.com`, `http://localhost:3000` (개발) |
 | CSRF | SameSite=Lax 쿠키 + Origin 헤더 검증 (Next.js Server Actions 기본 보호) |

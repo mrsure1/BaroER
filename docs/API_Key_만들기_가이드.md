@@ -73,21 +73,21 @@
 
 ---
 
-## 4. Google Cloud / Firebase (Google 로그인 + Auth + Firestore)
+## 4. Supabase (인증 + DB)
 
-### 4.1 Firebase 프로젝트
+### 4.1 Supabase 프로젝트
 
-- URL: https://console.firebase.google.com
+- URL: https://supabase.com/dashboard
 - 프로젝트: 기존 `baroer-2da46` 사용
 - **웹 앱 등록 필수** — 프로젝트 설정 → 내 앱 → `</>` 웹 아이콘 → 앱 등록 (Hosting 은 선택)
-  - 등록 후 표시되는 `firebaseConfig` 값을 `.env.local` 의 `NEXT_PUBLIC_FIREBASE_*` 에 복사
+  - 등록 후 표시되는 Project URL과 anon key를 `.env.local` 의 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` 에 복사
 - 사용 서비스:
   - **Authentication** → 로그인 방법
     - 이메일/비밀번호 ✅
     - Google ✅
-    - (Kakao 는 Firebase 에서 직접 제공되지 않아, 커스텀 토큰 흐름으로 우회 구현)
+    - Kakao 로그인 (Supabase Auth Providers 설정에서 Kakao 활성화)
   - **Cloud Firestore** → `users`, `patient_records`, `hospitals`, `dispatch_logs`, `call_logs`, `auth_sessions`
-  - **Firebase Admin SDK** (서버) → 서비스 계정 키 발급 → `FIREBASE_ADMIN_PRIVATE_KEY`, `FIREBASE_ADMIN_CLIENT_EMAIL` 등
+  - **Supabase Service Role Key** (서버) → `SUPABASE_SERVICE_ROLE_KEY`
 
 ### 4.2 Google OAuth (웹 클라이언트 ID)
 
@@ -96,12 +96,12 @@
   - `http://localhost:3000`
   - `https://baroer.vercel.app`
 - **"승인된 리디렉션 URI"** 에 등록:
-  - `http://localhost:3000/__/auth/handler` (Firebase 기본 핸들러)
-  - `https://baroer-2da46.firebaseapp.com/__/auth/handler`
+  - `http://localhost:3000/api/auth/callback` (Supabase 기본 핸들러 예시)
+  - `https://[PROJECT_ID].supabase.co/auth/v1/callback`
 - `.env.local`:
   - `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID` (클라이언트)
 
-> 웹앱은 Firebase `signInWithPopup(GoogleAuthProvider)` 또는 `signInWithRedirect` 로 처리됩니다. 모바일 웹에서는 팝업 차단 대응을 위해 `signInWithRedirect` 권장.
+> 웹앱은 Supabase `signInWithOAuth` 로 처리됩니다.
 
 ### 4.3 (삭제 대상) Android/iOS 클라이언트 ID
 
@@ -128,7 +128,7 @@
 | 접두사 | 노출 범위 | 예시 |
 |--------|-----------|------|
 | `NEXT_PUBLIC_*` | **브라우저에 노출됨** — JS SDK 로드, 공개 설정값에만 사용 | `NEXT_PUBLIC_NAVER_MAP_CLIENT_ID` |
-| (접두사 없음) | **서버 전용** — API Route, Server Action 에서만 접근 가능 | `DATA_SERVICE_KEY`, `NAVER_CLIENT_SECRET`, `KAKAO_REST_API_KEY`, `FIREBASE_ADMIN_PRIVATE_KEY` |
+| (접두사 없음) | **서버 전용** — API Route, Server Action 에서만 접근 가능 | `DATA_SERVICE_KEY`, `NAVER_CLIENT_SECRET`, `KAKAO_REST_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY` |
 
 **원칙:** 서비스 시크릿/REST 키/Admin 키는 절대로 `NEXT_PUBLIC_` 접두사를 붙이지 마세요. 한 번 커밋하면 Git 히스토리에 영구히 노출됩니다.
 

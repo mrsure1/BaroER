@@ -27,7 +27,7 @@
 | 언어 | TypeScript |
 | 스타일 | Tailwind CSS + CSS Modules |
 | 상태관리 | Zustand + TanStack Query |
-| 인증·DB | Firebase (Auth + Firestore) |
+| 인증·DB | **Supabase (Auth + Postgres)** |
 | 지도 | 네이버 지도 JavaScript API v3 |
 | 공공데이터 | 공공데이터포털 응급의료 API (서버사이드 프록시) |
 | 음성 입력 | Web Speech API (브라우저 내장) |
@@ -87,13 +87,13 @@ app/                       # Next.js App Router
 │   └── dispatch/          # 구급대원 출동 기록
 ├── api/                   # 서버사이드 API Route
 │   ├── hospitals/         # 공공데이터 프록시 (serviceKey 서버 보호)
-│   └── auth/              # NextAuth 또는 Firebase Admin
+│   └── auth/              # Supabase Auth Session Handling
 └── layout.tsx
 src/
 ├── components/            # 재사용 UI 컴포넌트
 ├── hooks/                 # useGeolocation, useHospitalSearch 등
 ├── stores/                # Zustand 스토어
-├── services/              # Firebase, 네이버지도, 공공데이터 래퍼
+├── services/              # Supabase, 네이버지도, 공공데이터 래퍼
 ├── types/                 # TypeScript 공통 타입
 └── utils/
 public/
@@ -127,12 +127,12 @@ docs/                      # 설계 문서
 |------|-----------|------|
 | `NEXT_PUBLIC_NAVER_MAP_CLIENT_ID` | 클라이언트 | 네이버 지도 JS SDK |
 | `NEXT_PUBLIC_KAKAO_JS_KEY` | 클라이언트 | 카카오 로그인 JS SDK |
-| `NEXT_PUBLIC_FIREBASE_*` | 클라이언트 | Firebase Web SDK 설정 |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | 클라이언트 | Supabase Web SDK 설정 |
 | `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID` | 클라이언트 | Google OAuth |
 | `DATA_SERVICE_KEY` | **서버 전용** | 공공데이터 API 키 (API Route 에서만 사용) |
 | `NAVER_CLIENT_SECRET` | **서버 전용** | 네이버 Directions 5 API 호출용 |
 | `KAKAO_REST_API_KEY` | **서버 전용** | OAuth 토큰 교환용 |
-| `FIREBASE_ADMIN_PRIVATE_KEY` | **서버 전용** | 서버사이드 Firebase Admin |
+| `SUPABASE_SERVICE_ROLE_KEY` | **서버 전용** | 서버사이드 Supabase Admin |
 
 > `NEXT_PUBLIC_` 접두사가 붙은 변수만 브라우저에 노출됩니다. 공공데이터 서비스 키와 카카오 REST 키는 반드시 서버(API Route)에서만 사용하세요.
 

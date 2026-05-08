@@ -110,10 +110,10 @@
 |---------|-----|------|------|
 | 이메일 입력 | `input_email` | `<input type="email" />` | 이메일 형식 검증(Zod + HTML5) |
 | 비밀번호 입력 | `input_password` | `<input type="password" />` | 비밀번호 입력 |
-| 자동 로그인 체크 | `chk_auto_login` | `<input type="checkbox" />` | Firebase `browserLocalPersistence` vs `browserSessionPersistence` 전환 |
-| 로그인 버튼 | `btn_login` | `<button>` (Primary) | Firebase `signInWithEmailAndPassword` 호출 → ID Token → `/api/v1/auth/session` 쿠키 발급 |
+| 자동 로그인 체크 | `chk_auto_login` | `<input type="checkbox" />` | Supabase 세션 스토리지 옵션 제어 |
+| 로그인 버튼 | `btn_login` | `<button>` (Primary) | Supabase `signInWithPassword` 호출 → 세션 쿠키 발급 |
 | 회원가입 링크 | `link_register` | `<Link>` (next/link) | `/register` 로 이동 |
-| 비밀번호 찾기 | `link_forgot_pw` | `<Link>` | 비밀번호 재설정 화면 (Firebase `sendPasswordResetEmail`) |
+| 비밀번호 찾기 | `link_forgot_pw` | `<Link>` | 비밀번호 재설정 화면 (Supabase `resetPasswordForEmail`) |
 | Google 로그인 | `btn_google` | `<button>` | `signInWithPopup(GoogleAuthProvider)` |
 | Kakao 로그인 | `btn_kakao` | `<button>` | Kakao JS SDK `Kakao.Auth.authorize({ redirectUri })` → `/api/v1/auth/kakao/callback` |
 
